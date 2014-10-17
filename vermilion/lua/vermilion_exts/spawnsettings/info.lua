@@ -1,3 +1,0 @@
-{
-	"initFile": "spawnsettings.lua"
-}

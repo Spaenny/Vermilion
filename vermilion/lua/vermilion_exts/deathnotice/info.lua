@@ -1,3 +1,0 @@
-{
-	"initFile": "deathnotice.lua"
-}

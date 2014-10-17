@@ -1,3 +1,0 @@
-{
-	"initFile": "helpcmds.lua"
-}

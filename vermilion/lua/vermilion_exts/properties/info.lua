@@ -1,3 +1,0 @@
-{
-	"initFile": "vprops.lua"
-}

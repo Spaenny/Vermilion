@@ -1,3 +1,0 @@
-{
-	"initFile": "instructions.lua"
-}

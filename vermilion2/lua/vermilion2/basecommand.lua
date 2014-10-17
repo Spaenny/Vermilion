@@ -1,0 +1,43 @@
+--[[
+ Copyright 2014 Ned Hyett
+
+ Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ in compliance with the License. You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software distributed under the License
+ is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ or implied. See the License for the specific language governing permissions and limitations under
+ the License.
+ 
+ The right to upload this project to the Steam Workshop (which is operated by Valve Corporation) 
+ is reserved by the original copyright holder, regardless of any modifications made to the code,
+ resources or related content. The original copyright holder is not affiliated with Valve Corporation
+ in any way, nor claims to be so. 
+]]
+
+local subcommands = {}
+
+function Vermilion:AddCommand(name, executor)
+	subcommands[name] = executor
+end
+
+concommand.Add("vermilion", function(sender, cmd, args, fullstring)
+	if(table.Count(args) < 1) then
+		Vermilion.Log("Unknown Command!")
+		return
+	end
+	local cmd = subcommands[args[1]]
+	if(cmd == nil) then
+		Vermilion.Log("Unknown Command!")
+		return
+	end
+	cmd(sender, table.remove(table.Copy(args), 1))
+end, function(cmd, args)
+
+end, "Vermilion Base Command")
+
+Vermilion:AddCommand("dump_settings", function(sender, args)
+	PrintTable(Vermilion.Data)
+end)
