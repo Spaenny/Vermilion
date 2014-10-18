@@ -53,7 +53,8 @@ Vermilion.Event = {
 	["MENU_CLOSED"] = "Vermilion2_MenuClosed",
 	["MENU_TAB"] = "Vermilion2_MenuChangeTab",
 	["CLIENT_GOT_RANKS"] = "Vermilion2_ClientRanks",
-	["CLIENT_GOT_RANK_OVERVIEWS"] = "Vermilion2_AllRanks"
+	["CLIENT_GOT_RANK_OVERVIEWS"] = "Vermilion2_AllRanks",
+	["CheckLimit"] = "Vermilion2_CheckLimit"
 }
 
 function Vermilion.Log( str )

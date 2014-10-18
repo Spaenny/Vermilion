@@ -33,7 +33,9 @@ MODULE.Permissions = {
 	"enable_flashlight",
 	"noclip",
 	"can_spray",
-	"chat"
+	"chat",
+	"use_voip",
+	"hear_voip"
 }
 MODULE.NetworkStrings = {
 	"VServerGetProperties", -- used to build the settings page
@@ -52,11 +54,11 @@ local options = {
 			"All Players",
 			"Permissions Based"
 		}, Category = "Limits", CategoryWeight = 0, Default = 3 },
-	{ Name = "enable_limit_remover", GuiText = "Spawn Limit Remover:", Type = "Combobox", Options = {
+	--[[ { Name = "enable_limit_remover", GuiText = "Spawn Limit Remover:", Type = "Combobox", Options = {
 			"Off",
 			"All Players",
 			"Permissions Based"
-		}, Category = "Limits", CategoryWeight = 0, Default = 3, Incomplete = true },
+		}, Category = "Limits", CategoryWeight = 0, Default = 3, Incomplete = true }, ]]
 	{ Name = "enable_no_damage", GuiText = "Disable Damage:", Type = "Combobox", Options = {
 			"Off",
 			"All Players",
@@ -85,7 +87,7 @@ local options = {
 			"Globally Disable VoIP",
 			"Globally Enable VoIP",
 			"Permissions Based"
-		}, Category = "Limits", CategoryWeight = 0, Default = 4, Incomplete = true },
+		}, Category = "Limits", CategoryWeight = 0, Default = 4 },
 	{ Name = "limit_chat", GuiText = "Chat Blocker:", Type = "Combobox", Options = {
 			"Off",
 			"Globally Disable Chat",
@@ -270,6 +272,7 @@ function MODULE:InitServer()
 		end
 	end)
 	
+	-- refill ammo every .5 seconds to save processing time.
 	timer.Create("Vermilion_UnlimitedAmmo", 1/2, 0, function()
 		if(MODULE:GetData("unlimited_ammo", 3) == 1) then return end
 		for i,ply in pairs(VToolkit.GetValidPlayers()) do
@@ -284,6 +287,20 @@ function MODULE:InitServer()
 						ply:GiveAmmo(1, twep:GetSecondaryAmmoType(), true)
 					end
 				end
+			end
+		end
+	end)
+	
+	self:AddHook("PlayerCanHearPlayersVoice", function(listener, talker)
+		local mode = MODULE:GetData("voip_control", 4, true)
+		if(mode > 1) then
+			if(mode == 2) then
+				return false
+			elseif(mode == 3) then
+				return true
+			elseif(mode == 4) then
+				if(not Vermilion:HasPermission(talker, "use_voip")) then return false end
+				if(not Vermilion:HasPermission(listener, "hear_voip")) then return false end
 			end
 		end
 	end)
@@ -315,243 +332,258 @@ function MODULE:InitClient()
 		end
 	end)
 
-	self:AddHook(Vermilion.Event.MOD_LOADED, function()
 		
-		Vermilion.Menu:AddCategory("Server Settings", 2)
-		
-		Vermilion.Menu:AddPage({
-			ID = "server_settings",
-			Name = "Basic Settings",
-			Order = 0,
-			Category = "Server Settings",
-			Size = { 600, 560 },
-			Conditional = function(vplayer)
-				return Vermilion:HasPermission("manage_server")
-			end,
-			Builder = function(panel)
-				MODULE.UpdatingGUI = true
-				MODULE.SettingsList = VToolkit:CreateCategoryList()
-				MODULE.SettingsList:SetParent(panel)
-				MODULE.SettingsList:SetPos(0, 0)
-				MODULE.SettingsList:SetSize(600, 560)
-				local sl = MODULE.SettingsList
+	Vermilion.Menu:AddCategory("Server Settings", 2)
+	
+	Vermilion.Menu:AddPage({
+		ID = "server_settings",
+		Name = "Basic Settings",
+		Order = 0,
+		Category = "Server Settings",
+		Size = { 600, 560 },
+		Conditional = function(vplayer)
+			return Vermilion:HasPermission("manage_server")
+		end,
+		Builder = function(panel)
+			MODULE.UpdatingGUI = true
+			MODULE.SettingsList = VToolkit:CreateCategoryList()
+			MODULE.SettingsList:SetParent(panel)
+			MODULE.SettingsList:SetPos(0, 0)
+			MODULE.SettingsList:SetSize(600, 560)
+			local sl = MODULE.SettingsList
+			
+			for i,k in SortedPairsByMemberValue(categories, "Order") do
+				k.Impl = sl:Add(k.Name)
+			end
+			
+			for i,k in pairs(options) do
+				if(k.Type == "Combobox") then
+					local panel = vgui.Create("DPanel")
 				
-				for i,k in SortedPairsByMemberValue(categories, "Order") do
-					k.Impl = sl:Add(k.Name)
-				end
-				
-				for i,k in pairs(options) do
-					if(k.Type == "Combobox") then
-						local panel = vgui.Create("DPanel")
+					local label = VToolkit:CreateLabel(k.GuiText)
+					label:SetDark(true)
+					label:SetPos(10, 3 + 3)
+					label:SetParent(panel)
 					
-						local label = VToolkit:CreateLabel(k.GuiText)
-						label:SetDark(true)
-						label:SetPos(10, 3 + 3)
-						label:SetParent(panel)
-						
-						local combobox = VToolkit:CreateComboBox()
-						combobox:SetPos(MODULE.SettingsList:GetWide() - 230, 3)
-						combobox:SetParent(panel)
-						for i1,k1 in pairs(k.Options) do
-							combobox:AddChoice(k1)
-						end
-						combobox:SetWide(200)
-						
-						if(k.Incomplete) then
-							local dimage = vgui.Create("DImage")
-							dimage:SetImage("icon16/error.png")
-							dimage:SetSize(16, 16)
-							dimage:SetPos(select(1, combobox:GetPos()) - 25, 5)
-							dimage:SetParent(panel)
-							dimage:SetTooltip("Feature not implemented!")
-						end
-						
-						function combobox:OnSelect(index)
-							if(MODULE.UpdatingGUI) then return end
-							net.Start("VServerUpdate")
-							net.WriteTable({{ Module = k.Module, Name = k.Name, Value = index}})
-							net.SendToServer()
-						end
-						
-						panel:SetSize(select(1, combobox:GetPos()) + combobox:GetWide() + 10, combobox:GetTall() + 5)
-						panel:SetPaintBackground(false)
-						
-						local cat = nil
-						for ir,cat1 in pairs(categories) do
-							if(cat1.Name == k.Category) then cat = cat1.Impl break end
-						end
-						
-						panel:SetContentAlignment( 4 )
-						panel:DockMargin( 1, 0, 1, 0 )
-						
-						panel:Dock(TOP)
-						panel:SetParent(cat)
-						
-						combobox:ChooseOptionID(k.Default)
-						
-						if(k.Permission != nil) then
-							combobox:SetEnabled(Vermilion:HasPermission(k.Permission))
-						end
-						k.Impl = combobox
-					elseif(k.Type == "Checkbox") then
-						local panel = vgui.Create("DPanel")
-						
-						local cb = VToolkit:CreateCheckBox(k.GuiText)
-						cb:SetDark(true)
-						cb:SetPos(10, 3)
-						cb:SetParent(panel)
-						
-						cb:SetValue(k.Default)
-						
-						function cb:OnChange()
-							if(MODULE.UpdatingGUI) then return end
-							net.Start("VServerUpdate")
-							net.WriteTable({{Module = k.Module, Name = k.Name, Value = cb:GetChecked()}})
-							net.SendToServer()
-						end
-						
-						
-						
-						panel:SetSize(cb:GetWide() + 10, cb:GetTall() + 5)
-						if(k.Incomplete) then
-							local dimage = vgui.Create("DImage")
-							dimage:SetImage("icon16/error.png")
-							dimage:SetSize(16, 16)
-							dimage:SetPos(select(1, cb:GetPos()) + cb:GetWide() + 25, 5)
-							dimage:SetParent(panel)
-							dimage:SetTooltip("Feature not implemented!")
-							panel:SetWide(panel:GetWide() + 25)
-						end
-						panel:SetPaintBackground(false)
-						
-						local cat = nil
-						for ir,cat1 in pairs(categories) do
-							if(cat1.Name == k.Category) then cat = cat1.Impl break end
-						end
-						
-						panel:SetContentAlignment( 4 )
-						panel:DockMargin( 1, 0, 1, 0 )
-						
-						panel:Dock(TOP)
-						panel:SetParent(cat)
-						
-						if(k.Permission != nil) then
-							cb:SetEnabled(Vermilion:HasPermission(k.Permission))
-						end
-						k.Impl = cb
-					elseif(k.Type == "Slider") then
-						local panel = vgui.Create("DPanel")
-						
-						local slider = VToolkit:CreateSlider(k.GuiText, k.Bounds.Min, k.Bounds.Max, 2)
-						slider:SetPos(10, 3)
-						slider:SetParent(panel)
-						slider:SetWide(300)
-						
-						slider:SetValue(k.Default)
-						
-						function slider:OnChange(index)
-							if(MODULE.UpdatingGUI) then return end
-							net.Start("VServerUpdate")
-							net.WriteTable({{ Module = k.Module, Name = k.Name, Value = index}})
-							net.SendToServer()
-						end
-						
-						panel:SetSize(slider:GetWide() + 10, slider:GetTall() + 5)
-						panel:SetPaintBackground(false)
-						
-						local cat = nil
-						for ir,cat1 in pairs(categories) do
-							if(cat1.Name == k.Category) then cat = cat1.Impl break end
-						end
-						
-						panel:SetContentAlignment( 4 )
-						panel:DockMargin( 1, 0, 1, 0 )
-						
-						panel:Dock(TOP)
-						panel:SetParent(cat)
-						
-						if(k.Permission != nil) then
-							slider:SetEnabled(Vermilion:HasPermission(k.Permission))
-						end
-						k.Impl = slider
-					elseif(k.Type == "Colour") then
-						-- Implement Me!
-					elseif(k.Type == "NumberWang") then
-						-- Implement Me!
-					elseif(k.Type == "Text") then
-						-- Implement Me!
+					local combobox = VToolkit:CreateComboBox()
+					combobox:SetPos(MODULE.SettingsList:GetWide() - 230, 3)
+					combobox:SetParent(panel)
+					for i1,k1 in pairs(k.Options) do
+						combobox:AddChoice(k1)
 					end
+					combobox:SetWide(200)
+					
+					if(k.Incomplete) then
+						local dimage = vgui.Create("DImage")
+						dimage:SetImage("icon16/error.png")
+						dimage:SetSize(16, 16)
+						dimage:SetPos(select(1, combobox:GetPos()) - 25, 5)
+						dimage:SetParent(panel)
+						dimage:SetTooltip("Feature not implemented!")
+					end
+					
+					function combobox:OnSelect(index)
+						if(MODULE.UpdatingGUI) then return end
+						net.Start("VServerUpdate")
+						net.WriteTable({{ Module = k.Module, Name = k.Name, Value = index}})
+						net.SendToServer()
+					end
+					
+					panel:SetSize(select(1, combobox:GetPos()) + combobox:GetWide() + 10, combobox:GetTall() + 5)
+					panel:SetPaintBackground(false)
+					
+					local cat = nil
+					for ir,cat1 in pairs(categories) do
+						if(cat1.Name == k.Category) then cat = cat1.Impl break end
+					end
+					
+					panel:SetContentAlignment( 4 )
+					panel:DockMargin( 1, 0, 1, 0 )
+					
+					panel:Dock(TOP)
+					panel:SetParent(cat)
+					
+					combobox:ChooseOptionID(k.Default)
+					
+					if(k.Permission != nil) then
+						combobox:SetEnabled(Vermilion:HasPermission(k.Permission))
+					end
+					k.Impl = combobox
+				elseif(k.Type == "Checkbox") then
+					local panel = vgui.Create("DPanel")
+					
+					local cb = VToolkit:CreateCheckBox(k.GuiText)
+					cb:SetDark(true)
+					cb:SetPos(10, 3)
+					cb:SetParent(panel)
+					
+					cb:SetValue(k.Default)
+					
+					function cb:OnChange()
+						if(MODULE.UpdatingGUI) then return end
+						net.Start("VServerUpdate")
+						net.WriteTable({{Module = k.Module, Name = k.Name, Value = cb:GetChecked()}})
+						net.SendToServer()
+					end
+					
+					
+					
+					panel:SetSize(cb:GetWide() + 10, cb:GetTall() + 5)
+					if(k.Incomplete) then
+						local dimage = vgui.Create("DImage")
+						dimage:SetImage("icon16/error.png")
+						dimage:SetSize(16, 16)
+						dimage:SetPos(select(1, cb:GetPos()) + cb:GetWide() + 25, 5)
+						dimage:SetParent(panel)
+						dimage:SetTooltip("Feature not implemented!")
+						panel:SetWide(panel:GetWide() + 25)
+					end
+					panel:SetPaintBackground(false)
+					
+					local cat = nil
+					for ir,cat1 in pairs(categories) do
+						if(cat1.Name == k.Category) then cat = cat1.Impl break end
+					end
+					
+					panel:SetContentAlignment( 4 )
+					panel:DockMargin( 1, 0, 1, 0 )
+					
+					panel:Dock(TOP)
+					panel:SetParent(cat)
+					
+					if(k.Permission != nil) then
+						cb:SetEnabled(Vermilion:HasPermission(k.Permission))
+					end
+					k.Impl = cb
+				elseif(k.Type == "Slider") then
+					local panel = vgui.Create("DPanel")
+					
+					local slider = VToolkit:CreateSlider(k.GuiText, k.Bounds.Min, k.Bounds.Max, 2)
+					slider:SetPos(10, 3)
+					slider:SetParent(panel)
+					slider:SetWide(300)
+					
+					slider:SetValue(k.Default)
+					
+					function slider:OnChange(index)
+						if(MODULE.UpdatingGUI) then return end
+						net.Start("VServerUpdate")
+						net.WriteTable({{ Module = k.Module, Name = k.Name, Value = index}})
+						net.SendToServer()
+					end
+					
+					panel:SetSize(slider:GetWide() + 10, slider:GetTall() + 5)
+					panel:SetPaintBackground(false)
+					
+					local cat = nil
+					for ir,cat1 in pairs(categories) do
+						if(cat1.Name == k.Category) then cat = cat1.Impl break end
+					end
+					
+					panel:SetContentAlignment( 4 )
+					panel:DockMargin( 1, 0, 1, 0 )
+					
+					panel:Dock(TOP)
+					panel:SetParent(cat)
+					
+					if(k.Permission != nil) then
+						slider:SetEnabled(Vermilion:HasPermission(k.Permission))
+					end
+					k.Impl = slider
+				elseif(k.Type == "Colour") then
+					-- Implement Me!
+				elseif(k.Type == "NumberWang") then
+					-- Implement Me!
+				elseif(k.Type == "Text") then
+					-- Implement Me!
 				end
-				MODULE.UpdatingGUI = false
-			end,
-			Updater = function(panel)
-				net.Start("VServerGetProperties")
-				net.SendToServer()
 			end
-		})
-		
-		Vermilion.Menu:AddPage({
-			ID = "motd",
-			Name = "MOTD",
-			Order = 1,
-			Category = "Server Settings",
-			Size = { 500, 500 },
-			Conditional = function(vplayer)
-				return Vermilion:HasPermission("set_motd")
-			end,
-			Builder = function(panel)
-				local motdtext = VToolkit:CreateTextbox("", panel)
-				motdtext:SetMultiline(true)
-				motdtext:SetPos(10, 10)
-				motdtext:SetSize(480, 400)
-				motdtext:SetParent(panel)
-				
-				local isURL = VToolkit:CreateCheckBox("MOTD Is URL")
-				isURL:SetPos(10, 420)
-				isURL:SetParent(panel)
-				isURL:SizeToContents()
-				
-				local isHTML = VToolkit:CreateCheckBox("MOTD is HTML")
-				isHTML:SetPos(10, 440)
-				isHTML:SetParent(panel)
-				isHTML:SizeToContents()
-				
-				local motdVars = VToolkit:CreateButton("Show Variables", function()
-				
-				end)
-				motdVars:SetPos(370, 425)
-				motdVars:SetSize(120, 20)
-				motdVars:SetParent(panel)
-				
-				local preview = VToolkit:CreateButton("Preview", function()
-				
-				end)
-				preview:SetPos(370, 455)
-				preview:SetSize(120, 20)
-				preview:SetParent(panel)
-				
-			end
-		})
-		
-		Vermilion.Menu:AddPage({
-			ID = "userdata",
-			Name = "Userdata Browser",
-			Order = 2,
-			Category = "Server Settings",
-			Size = { 600, 560 },
-			Conditional = function(vplayer)
-				return Vermilion:HasPermission("manage_server")
-			end,
-			Builder = function(panel)
-				local label = VToolkit:CreateLabel("Under Construction")
-				label:SetFont("DermaLarge")
-				label:SizeToContents()
-				label:SetPos((panel:GetWide() - label:GetWide()) / 2, (panel:GetTall() - label:GetTall()) / 2)
-				label:SetParent(panel)
-			end
-		})
-		
-	end)
+			MODULE.UpdatingGUI = false
+		end,
+		Updater = function(panel)
+			net.Start("VServerGetProperties")
+			net.SendToServer()
+		end
+	})
+	
+	Vermilion.Menu:AddPage({
+		ID = "motd",
+		Name = "MOTD",
+		Order = 1,
+		Category = "Server Settings",
+		Size = { 500, 500 },
+		Conditional = function(vplayer)
+			return Vermilion:HasPermission("set_motd")
+		end,
+		Builder = function(panel)
+			local motdtext = VToolkit:CreateTextbox("", panel)
+			motdtext:SetMultiline(true)
+			motdtext:SetPos(10, 10)
+			motdtext:SetSize(480, 400)
+			motdtext:SetParent(panel)
+			
+			local isURL = VToolkit:CreateCheckBox("MOTD Is URL")
+			isURL:SetPos(10, 420)
+			isURL:SetParent(panel)
+			isURL:SizeToContents()
+			
+			local isHTML = VToolkit:CreateCheckBox("MOTD is HTML")
+			isHTML:SetPos(10, 440)
+			isHTML:SetParent(panel)
+			isHTML:SizeToContents()
+			
+			local motdVars = VToolkit:CreateButton("Show Variables", function()
+			
+			end)
+			motdVars:SetPos(370, 425)
+			motdVars:SetSize(120, 20)
+			motdVars:SetParent(panel)
+			
+			local preview = VToolkit:CreateButton("Preview", function()
+			
+			end)
+			preview:SetPos(370, 455)
+			preview:SetSize(120, 20)
+			preview:SetParent(panel)
+			
+		end
+	})
+	
+	Vermilion.Menu:AddPage({
+		ID = "userdata",
+		Name = "Userdata Browser",
+		Order = 2,
+		Category = "Server Settings",
+		Size = { 600, 560 },
+		Conditional = function(vplayer)
+			return Vermilion:HasPermission("manage_server")
+		end,
+		Builder = function(panel)
+			local label = VToolkit:CreateLabel("Under Construction")
+			label:SetFont("DermaLarge")
+			label:SizeToContents()
+			label:SetPos((panel:GetWide() - label:GetWide()) / 2, (panel:GetTall() - label:GetTall()) / 2)
+			label:SetParent(panel)
+		end
+	})
+	
+	Vermilion.Menu:AddPage({
+		ID = "voip_channels",
+		Name = "VoIP Channels",
+		Order = 3,
+		Category = "Server Settings",
+		Size = { 600, 560 },
+		Conditional = function(vplayer)
+			return Vermilion:HasPermission("manage_server")
+		end,
+		Builder = function(panel)
+			local label = VToolkit:CreateLabel("Under Construction")
+			label:SetFont("DermaLarge")
+			label:SizeToContents()
+			label:SetPos((panel:GetWide() - label:GetWide()) / 2, (panel:GetTall() - label:GetTall()) / 2)
+			label:SetParent(panel)
+		end
+	})
 end
 
 Vermilion:RegisterModule(MODULE)

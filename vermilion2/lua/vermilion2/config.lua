@@ -546,6 +546,68 @@ end)
 
 --[[
 
+	//		Entity Ownership		\\
+
+]]--
+
+duplicator.RegisterEntityModifier("Vermilion_Owner", function(vplayer, entity, data)
+	entity.Vermilion_Owner = data.Owner
+end)
+
+local setOwnerFunc = function(vplayer, model, entity)
+	local tEnt = entity
+	if(tEnt == nil) then tEnt = model end
+	if(IsValid(tEnt)) then
+		tEnt.Vermilion_Owner = vplayer:SteamID()
+		tEnt:SetNWString("Vermilion_Owner", vplayer:SteamID())
+		duplicator.StoreEntityModifier(tEnt, "Vermilion_Owner", { Owner = vplayer:SteamID() })
+	end
+end
+
+local spawnedFuncs = {
+	"PlayerSpawnedProp",
+	"PlayerSpawnedSENT",
+	"PlayerSpawnedNPC",
+	"PlayerSpawnedVehicle",
+	"PlayerSpawnedEffect",
+	"PlayerSpawnedRagdoll",
+	"PlayerSpawnedSWEP"
+}
+
+for i,spHook in pairs(spawnedFuncs) do
+	Vermilion:AddHook(spHook, "Vermilion_SpawnCreatorSet" .. i, true, setOwnerFunc)
+end
+
+timer.Simple(1, function()
+	local meta = FindMetaTable("Player")
+	if(meta.Vermilion_CheckLimit == nil) then
+		meta.Vermilion_CheckLimit = meta.CheckLimit
+		function meta:CheckLimit(str)
+			local hookResult = hook.Run(Vermilion.Event.CheckLimit, self, str)
+			if(hookResult != nil) then return hookResult end
+			return self:Vermilion_CheckLimit(str)
+		end
+	end
+end)
+
+local spawnFuncs = {
+	{ "PlayerSpawnProp", "props" },
+	{ "PlayerSpawnSENT", "sents" },
+	{ "PlayerSpawnNPC", "npcs" },
+	{ "PlayerSpawnVehicle", "vehicles" },
+	{ "PlayerSpawnEffect", "effects" },
+	{ "PlayerSpawnSWEP", "sents" }
+}
+
+for i,k in pairs(spawnFuncs) do
+	Vermilion:AddHook(k[1], "Vermilion_CheckLimit" .. k[1], false, function(vplayer)
+		return vplayer:CheckLimit(k[2])
+	end)
+end
+
+
+--[[
+
 	//		Gui Updating	\\
 
 ]]--

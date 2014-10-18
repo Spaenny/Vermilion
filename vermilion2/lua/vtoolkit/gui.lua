@@ -330,36 +330,7 @@ function VToolkit:CreateDialog(title, text)
 end
 
 function VToolkit:CreateErrorDialog(text)
-	local panel = self:CreateFrame(
-		{
-			['size'] = { 500, 100 },
-			['pos'] = { (ScrW() / 2) - 250, (ScrH() / 2) - 50 },
-			['closeBtn'] = true,
-			['draggable'] = true,
-			['title'] = "Vermilion - Error",
-			['bgBlur'] = true
-		}
-	)
-	panel:MakePopup()
-	panel:DoModal()
-	panel:SetAutoDelete(true)
-	
-	
-	
-	self:SetDark(false)
-	local textLabel = self:CreateLabel(text)
-	textLabel:SizeToContents()
-	textLabel:SetPos(250 - (textLabel:GetWide() / 2), 30)
-	textLabel:SetParent(panel)
-	textLabel:SetBright(true)
-	
-	local confirmButton = self:CreateButton("OK", function(self)
-		panel:Close()
-	end)
-	confirmButton:SetPos(200, 75)
-	confirmButton:SetSize(100, 20)
-	confirmButton:SetParent(panel)
-	self:SetDark(true)
+	self:CreateDialog("Error", text)
 end
 
 function VToolkit:CreateConfirmDialog(text, completeFunc)
@@ -595,6 +566,7 @@ function VToolkit:CreatePreviewPanel(typ, parent, move)
 	PreviewPanel:SetSize(148, 148)
 	PreviewPanel:SetParent(parent)
 	PreviewPanel:SetDrawOnTop(true)
+	PreviewPanel:SetVisible(false)
 	
 	if(typ == "model") then
 		move = move or function() end
@@ -607,8 +579,14 @@ function VToolkit:CreatePreviewPanel(typ, parent, move)
 			move(ent)
 		end
 					
-		PreviewPanel:SetVisible(false)
 		PreviewPanel.ModelView = dmodel
+	elseif(typ == "html") then
+		local dhtml = vgui.Create("DHTML")
+		dhtml:SetPos(10, 10)
+		dhtml:SetSize(128, 128)
+		dhtml:SetParent(PreviewPanel)
+		
+		PreviewPanel.HtmlView = dhtml
 	end
 	
 	

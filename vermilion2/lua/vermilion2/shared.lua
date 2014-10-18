@@ -191,7 +191,10 @@ function Vermilion:LoadModules()
 			local fle = CompileFile("vermilion2/modules/" .. dir .. "/init.lua")
 			if(isfunction(fle)) then
 				if(SERVER) then AddCSLuaFile("vermilion2/modules/" .. dir .. "/init.lua") end
-				fle()
+				xpcall(fle, function(err)
+					Vermilion.Log("Error loading module: " .. err)
+					debug.Trace()
+				end)
 			end
 		end
 	end
