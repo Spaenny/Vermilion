@@ -20,7 +20,7 @@
 local MODULE = Vermilion:CreateBaseModule()
 MODULE.Name = "Weapon Limits"
 MODULE.ID = "limit_weapons"
-MODULE.Description = "Prevent players from using certain weapons."
+MODULE.Description = "Prevent players from spawning/using/picking up certain weapons."
 MODULE.Author = "Ned"
 MODULE.Permissions = {
 	"manage_weapon_limits"
@@ -35,7 +35,7 @@ function MODULE:InitServer()
 
 	self:AddHook("PlayerGiveSWEP", function(vplayer, weapon, swep)
 		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), weapon)) then
-			-- notify
+			Vermilion:AddNotification(vplayer, "You cannot spawn this SWEP!", NOTIFY_ERROR)
 			return false
 		end
 	end)
@@ -75,12 +75,12 @@ function MODULE:InitServer()
 		local rnk = net.ReadString()
 		local data = MODULE:GetData(rnk, {}, true)
 		if(data != nil) then
-			net.Start("VGetWeaponLimits")
+			MODULE:NetStart("VGetWeaponLimits")
 			net.WriteString(rnk)
 			net.WriteTable(data)
 			net.Send(vplayer)
 		else
-			net.Start("VGetWeaponLimits")
+			MODULE:NetStart("VGetWeaponLimits")
 			net.WriteString(rnk)
 			net.WriteTable({})
 			net.Send(vplayer)
@@ -127,13 +127,13 @@ function MODULE:InitClient()
 		end
 	end)
 
-	Vermilion.Menu:AddCategory("Limits", 5)
+	Vermilion.Menu:AddCategory("limits", 5)
 	
 	Vermilion.Menu:AddPage({
 			ID = "limit_weapons",
 			Name = "Weapons",
 			Order = 1,
-			Category = "Limits",
+			Category = "limits",
 			Size = { 900, 560 },
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_weapon_limits")
@@ -183,7 +183,7 @@ function MODULE:InitClient()
 				function rankList:OnRowSelected(index, line)
 					blockWeapon:SetDisabled(not (self:GetSelected()[1] != nil and allWeapons:GetSelected()[1] != nil))
 					unblockWeapon:SetDisabled(not (self:GetSelected()[1] != nil and rankBlockList:GetSelected()[1] != nil))
-					net.Start("VGetWeaponLimits")
+					MODULE:NetStart("VGetWeaponLimits")
 					net.WriteString(rankList:GetSelected()[1]:GetValue(1))
 					net.SendToServer()
 				end
@@ -229,7 +229,7 @@ function MODULE:InitClient()
 						if(has) then continue end
 						rankBlockList:AddLine(k:GetValue(1)).ClassName = k.ClassName
 						
-						net.Start("VBlockWeapon")
+						MODULE:NetStart("VBlockWeapon")
 						net.WriteString(rankList:GetSelected()[1]:GetValue(1))
 						net.WriteString(k.ClassName)
 						net.SendToServer()
@@ -242,7 +242,7 @@ function MODULE:InitClient()
 				
 				unblockWeapon = VToolkit:CreateButton("Unblock Weapon", function()
 					for i,k in pairs(rankBlockList:GetSelected()) do
-						net.Start("VUnblockWeapon")
+						MODULE:NetStart("VUnblockWeapon")
 						net.WriteString(rankList:GetSelected()[1]:GetValue(1))
 						net.WriteString(k.ClassName)
 						net.SendToServer()

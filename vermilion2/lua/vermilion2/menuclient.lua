@@ -37,25 +37,20 @@
 ]]--
 
 Vermilion.Menu = {}
-Vermilion.Menu.Categories = {
-	{
-		Name = "Basics",
-		Order = 1
-	}
-}
+Vermilion.Menu.Categories = {}
 Vermilion.Menu.Pages = {}
 Vermilion.Menu.Built = false
 
-function Vermilion.Menu:AddCategory(name, order)
+function Vermilion.Menu:AddCategory(id, order)
 	local has = false
 	for index,data in pairs(self.Categories) do
-		if(data.Name == name) then
+		if(data.ID == id) then
 			has = true
 			break
 		end
 	end
 	if(has) then return end
-	table.insert(self.Categories, { Name = name, Order = order })
+	table.insert(self.Categories, { ID = id, Name = Vermilion:TranslateStr("category:" .. id), Order = order })
 end
 
 function Vermilion.Menu:AddPage(data)
@@ -74,7 +69,7 @@ function Vermilion.Menu:AddPage(data)
 	end
 	local has = false
 	for index,cat in pairs(self.Categories) do
-		if(cat.Name == data.Category) then
+		if(cat.ID == data.Category) then
 			has = true
 			break
 		end
@@ -101,15 +96,23 @@ function Vermilion.Menu:GetCategory(name)
 	end
 end
 
+function Vermilion.Menu:GetCategoryID(id)
+	for index,cat in pairs(self.Categories) do
+		if(cat.ID == id) then return cat end
+	end
+end
+
 local MENU = Vermilion.Menu
 MENU.IsOpen = false
 MENU.ActiveTab = "welcome"
+
+MENU:AddCategory("basic", 1)
 
 MENU:AddPage({
 	ID = "welcome",
 	Name = "Welcome",
 	Order = -9000,
-	Category = "Basics",
+	Category = "basic",
 	Size = { 580, 560 },
 	Builder = function(panel)
 		local welcomeLabel = VToolkit:CreateLabel("Welcome to Vermilion!")
@@ -139,28 +142,57 @@ MENU:AddPage({
 	ID = "modules",
 	Name = "Modules",
 	Order = 1,
-	Category = "Basics",
+	Category = "basic",
 	Size = { 700, 560 },
 	Builder = function(panel)
 		local mlist = VToolkit:CreateList({"Name"})
 		mlist:SetPos(10, 10)
 		mlist:SetSize(200, 540)
 		mlist:SetParent(panel)
+		panel.ModuleList = mlist
 		
-		local title = VToolkit:CreateLabel("Title")
+		local title = VToolkit:CreateLabel("Click on a module...")
 		title:SetFont("DermaLarge")
 		title:SizeToContents()
 		title:SetPos(220, 10)
 		title:SetParent(panel)
+		panel.TitleLabel = title
+		
+		local author = VToolkit:CreateLabel("")
+		author:SetPos(223, 42)
+		author:SetParent(panel)
+		panel.AuthorLabel = author
 		
 		local description = vgui.Create("DTextEntry")
 		description:SetDrawBackground(false)
 		description:SetMultiline(true)
-		description:SetPos(220, 40)
-		description:SetSize(460, 400)
+		description:SetPos(220, 62)
+		description:SetSize(460, 398)
 		description:SetParent(panel)
-		description:SetValue("Description")
+		description:SetValue("")
 		description:SetEditable(false)
+		panel.Description = description
+	end,
+	Updater = function(panel)
+		if(table.Count(panel.ModuleList:GetLines()) == 0) then
+			for i,k in pairs(Vermilion.Modules) do
+				local ln = panel.ModuleList:AddLine(k.Name)
+				ln.OldClick = ln.OnMousePressed
+				function ln:OnMousePressed(mc)
+					panel.TitleLabel:SetText(k.Name)
+					panel.TitleLabel:SizeToContents()
+					
+					panel.AuthorLabel:SetText("Author: " .. k.Author)
+					panel.AuthorLabel:SizeToContents()
+					
+					panel.Description:SetValue(k.Description)
+					panel.Description:SetEditable(false)
+					
+					self:OldClick(mc)
+				end
+			end
+			panel.ModuleList:SortByColumn(panel.ModuleList.Columns[1]:GetColumnID())
+		end
 	end
 })
 
@@ -168,7 +200,7 @@ MENU:AddPage({
 	ID = "credits",
 	Name = "Credits",
 	Order = 50,
-	Category = "Basics",
+	Category = "basic",
 	Size = { 600, 600 },
 	Builder = function(panel)
 	
@@ -226,8 +258,8 @@ Vermilion:AddHook(Vermilion.Event.MOD_POST, "MenuClientBuild", true, function()
 	
 	local categories = {}
 	for index,catData in SortedPairsByMemberValue(MENU.Categories, "Order", false) do
-		categories[catData.Name] = MENU.CatList:Add(catData.Name)
-		catData.Impl = categories[catData.Name]
+		categories[catData.ID] = MENU.CatList:Add(catData.Name)
+		catData.Impl = categories[catData.ID]
 	end
 	
 	for index,pageData in SortedPairsByMemberValue(MENU.Pages, "Order", false) do
@@ -251,7 +283,11 @@ Vermilion:AddHook(Vermilion.Event.MOD_POST, "MenuClientBuild", true, function()
 		
 		MENU.Pages[pageData.ID].Panel = panel
 		
-		pageData.Builder(panel)
+		--pageData.Builder(panel)
+		xpcall(pageData.Builder, function(err)
+			Vermilion.Log("Error building page: " .. err)
+			debug.Trace()
+		end, panel)
 		
 		btn:SetVisible(pageData.Conditional(LocalPlayer()))
 		
@@ -333,8 +369,10 @@ timer.Simple(1, function()
 		
 		for i,k in pairs(MENU.Pages) do
 			if(k.Conditional(LocalPlayer())) then
-				local suc, err = pcall(k.Updater, k.Panel)
-				if(not suc) then print(err) end
+				xpcall(k.Updater, function(err)
+					Vermilion.Log("Failed to update panel (" .. k.ID .. "): " .. err)
+					debug.Trace()
+				end, k.Panel)
 			end
 		end
 		

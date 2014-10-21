@@ -35,7 +35,7 @@ function MODULE:InitServer()
 	
 	self:AddHook("CanTool", function(vplayer, tr, tool)
 		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), tool)) then
-			-- notify user
+			Vermilion:AddNotification(vplayer, "You cannot use this toolgun mode!", NOTIFY_ERROR)
 			return false
 		end
 	end)
@@ -44,12 +44,12 @@ function MODULE:InitServer()
 		local rnk = net.ReadString()
 		local data = MODULE:GetData(rnk, {}, true)
 		if(data != nil) then
-			net.Start("VGetToolgunLimits")
+			MODULE:NetStart("VGetToolgunLimits")
 			net.WriteString(rnk)
 			net.WriteTable(data)
 			net.Send(vplayer)
 		else
-			net.Start("VGetToolgunLimits")
+			MODULE:NetStart("VGetToolgunLimits")
 			net.WriteString(rnk)
 			net.WriteTable({})
 			net.Send(vplayer)
@@ -96,13 +96,13 @@ function MODULE:InitClient()
 		end
 	end)
 
-	Vermilion.Menu:AddCategory("Limits", 5)
+	Vermilion.Menu:AddCategory("limits", 5)
 	
 	Vermilion.Menu:AddPage({
 			ID = "limit_toolgun",
 			Name = "Tools",
 			Order = 2,
-			Category = "Limits",
+			Category = "limits",
 			Size = { 900, 560 },
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_toolgun_limits")
@@ -127,7 +127,7 @@ function MODULE:InitClient()
 				function rankList:OnRowSelected(index, line)
 					blockTool:SetDisabled(not (self:GetSelected()[1] != nil and allTools:GetSelected()[1] != nil))
 					unblockTool:SetDisabled(not (self:GetSelected()[1] != nil and rankBlockList:GetSelected()[1] != nil))
-					net.Start("VGetToolgunLimits")
+					MODULE:NetStart("VGetToolgunLimits")
 					net.WriteString(rankList:GetSelected()[1]:GetValue(1))
 					net.SendToServer()
 				end
@@ -173,7 +173,7 @@ function MODULE:InitClient()
 						if(has) then continue end
 						rankBlockList:AddLine(k:GetValue(1)).ClassName = k.ClassName
 						
-						net.Start("VBlockTool")
+						MODULE:NetStart("VBlockTool")
 						net.WriteString(rankList:GetSelected()[1]:GetValue(1))
 						net.WriteString(k.ClassName)
 						net.SendToServer()
@@ -186,7 +186,7 @@ function MODULE:InitClient()
 				
 				unblockTool = VToolkit:CreateButton("Unblock Tool", function()
 					for i,k in pairs(rankBlockList:GetSelected()) do
-						net.Start("VUnblockTool")
+						MODULE:NetStart("VUnblockTool")
 						net.WriteString(rankList:GetSelected()[1]:GetValue(1))
 						net.WriteString(k.ClassName)
 						net.SendToServer()

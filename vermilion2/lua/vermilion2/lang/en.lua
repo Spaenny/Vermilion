@@ -17,10 +17,12 @@
  in any way, nor claims to be so. 
 ]]
 
-local lang = Vermilion:CreateLangBody("en")
+local lang = Vermilion:CreateLangBody("English")
 
 lang:Add("no_users", "No such player exists on the server.")
 lang:Add("ambiguous_users", "Ambiguous results for search \"%s\". (Matched %s users).")
+lang:Add("access_denied", "Access Denied!")
+lang:Add("under_construction", "Under Construction!")
 
 
 --[[
@@ -28,6 +30,28 @@ lang:Add("ambiguous_users", "Ambiguous results for search \"%s\". (Matched %s us
 	//		Prints:Settings		\\
 
 ]]--
+
+
+--[[
+
+	//		Categories		\\
+
+]]--
+
+lang:Add("category:basic", "Basics")
+lang:Add("category:server", "Server Settings")
+lang:Add("category:ranks", "Ranks")
+lang:Add("category:player", "Player Editors")
+lang:Add("category:limits", "Limits")
+
+
+--[[
+
+	//		Toolgun Limiter
+
+]]--
+
+lang:Add("limit_toolgun:cannot_use", "You cannot use this toolgun mode!")
 
 
 Vermilion:RegisterLanguage(lang)

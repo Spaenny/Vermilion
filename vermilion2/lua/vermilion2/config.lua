@@ -132,8 +132,8 @@ function Vermilion:AttachRankFunctions(rankObj)
 		function meta:GetUsers()
 			local users = {}
 			for i,k in pairs(Vermilion.Data.Users) do
-				if(k:GetRankName() == self.Name) then
-					table.insert(users, k)
+				if(k:GetRankName() == self.Name and k:GetEntity() != nil) then
+					table.insert(users, k:GetEntity())
 				end
 			end
 			return users
@@ -322,18 +322,23 @@ function Vermilion:AttachUserFunctions(usrObject)
 			end
 		end
 		
+		function meta:IsImmune(other)
+			if(istable(other)) then
+				return self:IsImmuneToRank(other)
+			end
+			if(IsValid(other)) then
+				return self:GetRank():IsImmuneToRank(Vermilion:GetUser(other):GetRank())
+			end
+		end
+		
 		function meta:SetRank(rank)
 			if(Vermilion:HasRank(rank)) then
 				self.Rank = rank
-				local ply = VToolkit.LookupPlayerBySteamID(self.SteamID)
+				local ply = self:GetEntity()
 				if(IsValid(ply)) then
-					-- Notify the player here
-				end
-				-- Notify the client of the change
-				local ent = self:GetEntity()
-				if(IsValid(ent)) then 
-					ent:SetNWString("Vermilion_Rank", self.Rank)
-					Vermilion:SyncClientRank(ent)
+					Vermilion:AddNotification(ply, Vermilion:TranslateStr("change_rank", { self.Rank }, ply))
+					ply:SetNWString("Vermilion_Rank", self.Rank)
+					Vermilion:SyncClientRank(ply)
 				end
 			end
 		end
@@ -406,6 +411,14 @@ function Vermilion:HasPermission(vplayer, permission)
 	if(usr != nil) then
 		return usr:HasPermission(permission)
 	end
+end
+
+function Vermilion:HasPermissionError(vplayer, permission, log)
+	if(not self:HasPermission(vplayer, permission)) then
+		log(self:TranslateStr("access_denied"), NOTIFY_ERROR)
+		return false
+	end
+	return true
 end
 
 
@@ -518,8 +531,13 @@ end)
 ]]--
 
 Vermilion:AddHook("PlayerInitialSpawn", "RegisterPlayer", true, function(vplayer)
+	local new = false
 	if(not Vermilion:HasUser(vplayer)) then
 		Vermilion:StoreNewUserdata(vplayer)
+		new = true
+	end
+	if(Vermilion:GetUser(vplayer).Name != vplayer:GetName()) then
+		Vermilion:GetUser(vplayer).Name = vplayer:GetName()
 	end
 	if(table.Count(Vermilion:GetRank("owner"):GetUsers()) == 0 and (game.SinglePlayer() or vplayer:IsListenServerHost())) then
 		Vermilion:GetUser(vplayer):SetRank("owner")
@@ -538,6 +556,15 @@ Vermilion:AddHook("PlayerInitialSpawn", "RegisterPlayer", true, function(vplayer
 	end
 	net.WriteTable(tab)
 	net.Broadcast()
+	
+	-- this is temporary until I get the GeoIP working
+	timer.Simple(1, function()
+		if(new) then
+			Vermilion:BroadcastNotification(vplayer:GetName() .. " has joined the server for the first time!")
+		else
+			Vermilion:BroadcastNotification(vplayer:GetName() .. " has joined the server.")
+		end
+	end)
 end)
 
 
@@ -588,6 +615,14 @@ timer.Simple(1, function()
 			return self:Vermilion_CheckLimit(str)
 		end
 	end
+	if(meta.Vermilion_AddCount == nil) then
+		meta.Vermilion_AddCount = meta.AddCount
+		function meta:AddCount(str, ent)
+			ent.Vermilion_Owner = self:SteamID()
+			ent:SetNWString("Vermilion_Owner", self:SteamID())
+			duplicator.StoreEntityModifier(ent, "Vermilion_Owner", { Owner = self:SteamID() })
+		end
+	end
 end)
 
 local spawnFuncs = {
@@ -601,7 +636,7 @@ local spawnFuncs = {
 
 for i,k in pairs(spawnFuncs) do
 	Vermilion:AddHook(k[1], "Vermilion_CheckLimit" .. k[1], false, function(vplayer)
-		return vplayer:CheckLimit(k[2])
+		if(not vplayer:CheckLimit(k[2])) then return false end
 	end)
 end
 

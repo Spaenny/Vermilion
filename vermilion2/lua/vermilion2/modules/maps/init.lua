@@ -20,7 +20,7 @@
 local MODULE = Vermilion:CreateBaseModule()
 MODULE.Name = "Maps"
 MODULE.ID = "map"
-MODULE.Description = "Change the map and other stuff." // <-- put a better description.
+MODULE.Description = "Change or reload the map after a specified delay."
 MODULE.Author = "Ned"
 MODULE.Permissions = {
 	"manage_map"
@@ -39,6 +39,91 @@ MODULE.MapCache = {}
 MODULE.DisplayXPos1 = 0
 MODULE.DisplayXPos2 = 0
 MODULE.SoundTimer = nil
+
+function MODULE:RegisterChatCommands()
+	Vermilion:AddChatCommand("changelevel", function(sender, text, log)
+		if(Vermilion:HasPermissionError(sender, "manage_map", log)) then
+			if(table.Count(text) < 1) then
+				log("Invalid Syntax.")
+				return
+			end
+			local inTime = 0
+			if(table.Count(text) > 1) then
+				if(tonumber(text[2]) == nil) then
+					log("That isn't a number!")
+					return
+				end
+				inTime = tonumber(text[2])
+			end
+			if(not file.Exists("maps/" .. text[1] .. ".bsp", "GAME")) then
+				log("That map doesn't exist on the server!", NOTIFY_ERROR)
+				return
+			end
+			if(MODULE.MapChangeInProgress) then
+				log("A map change is already in progress. Abort the map change to change to a new map!", NOTIFY_ERROR)
+				return
+			end
+			MODULE.MapChangeInProgress = true
+			MODULE.MapChangeTo = text[1]
+			MODULE.MapChangeIn = inTime
+			MODULE:NetStart("VBroadcastSchedule")
+			net.WriteInt(MODULE.MapChangeIn, 32)
+			net.WriteString(MODULE.MapChangeTo)
+			net.Broadcast()
+			Vermilion:BroadcastNotification(sender:GetName() .. " has instigated a level change to " .. MODULE.MapChangeTo .. ".")
+		end
+	end, "<map> [time]", function(pos, current)
+		if(pos == 1) then
+			if(string.len(current) == 0) then
+				return {{Name = "", Syntax = "Start typing..."}}
+			end
+			local tab = {}
+			for i,k in pairs(MODULE.MapCache) do
+				if(string.find(string.lower(k[1]), string.lower(current))) then
+					table.insert(tab, k[1])
+				end
+			end
+			return tab
+		end
+	end)
+	
+	Vermilion:AddChatCommand("reloadmap", function(sender, text, log)
+		if(Vermilion:HasPermissionError(sender, "manage_map", log)) then
+			local inTime = 0
+			if(table.Count(text) > 0) then
+				if(tonumber(text[1]) == nil) then
+					log("That isn't a number!", NOTIFY_ERROR)
+					return
+				end
+				inTime = tonumber(text[1])
+			end
+			if(MODULE.MapChangeInProgress) then
+				log("A map change is already in progress. Abort the map change to change to a new map!", NOTIFY_ERROR)
+				return
+			end
+			MODULE.MapChangeInProgress = true
+			MODULE.MapChangeTo = game.GetMap()
+			MODULE.MapChangeIn = inTime
+			MODULE:NetStart("VBroadcastSchedule")
+			net.WriteInt(MODULE.MapChangeIn, 32)
+			net.WriteString(MODULE.MapChangeTo)
+			net.Broadcast()
+			Vermilion:BroadcastNotification(sender:GetName() .. " has instigated a level reload.")
+		end
+	end, "[time]")
+	
+	Vermilion:AddChatCommand("abortlevelchange", function(sender, text, log)
+		if(Vermilion:HasPermission(sender, "manage_map")) then
+			MODULE.MapChangeInProgress = false
+			MODULE.MapChangeIn = nil
+			MODULE.MapChangeTo = nil
+			MODULE:NetStart("VAbortMapChange")
+			net.Broadcast()
+			Vermilion:BroadcastNotification(sender:GetName() .. " has halted the level change.")
+		end
+	end)
+	
+end
 
 function MODULE:InitServer()
 	
@@ -245,7 +330,7 @@ function MODULE:InitServer()
 	end
 	
 	self:NetHook("VGetMapList", function(vplayer)
-		net.Start("VGetMapList")
+		MODULE:NetStart("VGetMapList")
 		net.WriteTable(MODULE.MapCache)
 		net.Send(vplayer)
 	end)
@@ -258,7 +343,7 @@ function MODULE:InitServer()
 				local to = MODULE.MapChangeTo
 				MODULE.MapChangeTo = nil
 				RunConsoleCommand("changelevel", to)
-				net.Start("VAbortMapChange")
+				MODULE:NetStart("VAbortMapChange")
 				net.Broadcast()
 			else
 				MODULE.MapChangeIn = MODULE.MapChangeIn - 1
@@ -267,7 +352,7 @@ function MODULE:InitServer()
 	end)
 	
 	self:NetHook("VScheduleMapChange", function(vplayer)
-		if(Vermilion:HasPermission(vplayer, "map_management")) then
+		if(Vermilion:HasPermission(vplayer, "manage_map")) then
 			if(MODULE.MapChangeInProgress) then
 				--Vermilion:SendMessageBox(vplayer, "A map change is already in progress. Abort the map change to change to a new map!")
 				return
@@ -275,7 +360,8 @@ function MODULE:InitServer()
 			MODULE.MapChangeInProgress = true
 			MODULE.MapChangeTo = net.ReadString()
 			MODULE.MapChangeIn = net.ReadInt(32)
-			net.Start("VBroadcastSchedule")
+			MODULE:NetStart("VBroadcastSchedule")
+			Vermilion:BroadcastNotify(vplayer:GetName() .. " has instigated a level change to " .. MODULE.MapChangeTo)
 			net.WriteInt(MODULE.MapChangeIn, 32)
 			net.WriteString(MODULE.MapChangeTo)
 			net.Broadcast()
@@ -283,12 +369,13 @@ function MODULE:InitServer()
 	end)
 	
 	self:NetHook("VAbortMapChange", function(vplayer)
-		if(vplayer:HasPermission("map_management")) then
+		if(Vermilion:HasPermission(vplayer, "manage_map")) then
 			MODULE.MapChangeInProgress = false
 			MODULE.MapChangeIn = nil
 			MODULE.MapChangeTo = nil
-			net.Start("VAbortMapChange")
+			MODULE:NetStart("VAbortMapChange")
 			net.Broadcast()
+			Vermilion:BroadcastNotify(vplayer:GetName() .. " has halted the level change.")
 		end
 	end)
 	
@@ -301,6 +388,42 @@ function MODULE:InitClient()
 		local map_list = panel.MapList
 		if(IsValid(map_list)) then
 			local maps = net.ReadTable()
+			local counter = 1
+			timer.Create("BuildMapList", 1/30, table.Count(maps), function()
+				if(not IsValid(map_list)) then return end
+				local k = maps[counter]
+				local ln = map_list:AddLine(k[1], k[2])
+				
+				ln.OldCursorMoved = ln.OnCursorMoved
+				ln.OldCursorEntered = ln.OnCursorEntered
+				ln.OldCursorExited = ln.OnCursorExited
+				
+				function ln:OnCursorEntered()
+					panel.PreviewPanel:SetVisible(true)
+					panel.PreviewPanel.HtmlView:OpenURL("asset://mapimage/" .. self:GetValue(1))
+					
+					if(self.OldCursorEntered) then self:OldCursorEntered() end
+				end
+				
+				function ln:OnCursorExited()
+					panel.PreviewPanel:SetVisible(false)
+					
+					if(self.OldCursorExited) then self:OldCursorExited() end
+				end
+				
+				function ln:OnCursorMoved(x,y)
+					if(IsValid(panel.PreviewPanel)) then
+						local x, y = input.GetCursorPos()
+						panel.PreviewPanel:SetPos(x - 275, y - 202)
+					end
+					
+					if(self.OldCursorMoved) then self:OldCursorMoved(x,y) end
+				end
+				
+				counter = counter + 1
+				panel.LoadProgress:SetFraction(counter / table.Count(maps))
+			end)
+			if(true) then return end
 			for i,k in pairs(maps) do
 				local ln = map_list:AddLine(k[1], k[2])
 				
@@ -417,13 +540,13 @@ function MODULE:InitClient()
 		end
 	end)
 	
-	Vermilion.Menu:AddCategory("Server Settings", 2)
+	Vermilion.Menu:AddCategory("server", 2)
 
 	Vermilion.Menu:AddPage({
 			ID = "map",
 			Name = "Change Map",
 			Order = 10,
-			Category = "Server Settings",
+			Category = "server",
 			Size = { 780, 560 },
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_map")
@@ -496,12 +619,12 @@ function MODULE:InitClient()
 				
 				
 				
-				local changeMapButton = VToolkit:CreateButton("GO!", function(self)
+				local changeMapButton = VToolkit:CreateButton("GO!", function()
 					if(table.Count(mapList:GetSelected()) == 0) then
 						VToolkit:CreateErrorDialog("Must select a map to change to!")
 						return
 					end
-					net.Start("VScheduleMapChange")
+					MODULE:NetStart("VScheduleMapChange")
 					net.WriteString(mapList:GetSelected()[1]:GetValue(1))
 					for i,k in pairs(times) do
 						if(k[1] == timeDelayComboBox.Vermilion_Value) then
@@ -516,19 +639,41 @@ function MODULE:InitClient()
 				changeMapButton:SetParent(panel)
 				
 				
-				local abortLevelChangeButton = VToolkit:CreateButton("Abort Level Change", function(self)
+				local abortLevelChangeButton = VToolkit:CreateButton("Abort Level Change", function()
 					VToolkit:CreateConfirmDialog("Are you sure you want to abort the level change?", function()
-						net.Start("VAbortMapChange")
+						MODULE:NetStart("VAbortMapChange")
 						net.SendToServer()
 					end)
 				end)
 				abortLevelChangeButton:SetPos(557.5, 220)
 				abortLevelChangeButton:SetSize(120, 30)
 				abortLevelChangeButton:SetParent(panel)
+				
+				
+				local loadProgress = vgui.Create("DProgress")
+				loadProgress:SetPos(470, 400)
+				loadProgress:SetSize(300, 20)
+				loadProgress:SetFraction(0)
+				loadProgress:SetParent(panel)
+				panel.LoadProgress = loadProgress
+				
+				local loadHeader = VToolkit:CreateHeaderLabel(loadProgress, "Maps Loaded:")
+				loadHeader:SetParent(panel)
+				
+				local reload = VToolkit:CreateButton("Reload Maps", function()
+					VToolkit:CreateConfirmDialog("Really reload all maps?", function()
+						mapList:Clear()
+						MODULE:NetStart("VGetMapList")
+						net.SendToServer()
+					end)
+				end)
+				reload:SetPos(470, 525)
+				reload:SetSize(100, 25)
+				reload:SetParent(panel)
 			end,
 			Updater = function(panel)
 				if(table.Count(panel.MapList:GetLines()) == 0) then
-					net.Start("VGetMapList")
+					MODULE:NetStart("VGetMapList")
 					net.SendToServer()
 				end
 				panel.MapList:SetVisible(true)

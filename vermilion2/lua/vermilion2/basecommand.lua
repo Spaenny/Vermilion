@@ -16,11 +16,30 @@
  resources or related content. The original copyright holder is not affiliated with Valve Corporation
  in any way, nor claims to be so. 
 ]]
-
 local subcommands = {}
+if(SERVER) then
+	util.AddNetworkString("Vermilion_ConsoleUpdate")
 
-function Vermilion:AddCommand(name, executor)
-	subcommands[name] = executor
+	function Vermilion:AddCommand(name, executor)
+		subcommands[name] = executor
+	end
+
+	Vermilion:AddCommand("dump_settings", function(sender, args)
+		PrintTable(Vermilion.Data)
+	end)
+	
+	hook.Add("PlayerInitialSpawn", "Vermilion_ConsoleUpdate", function(vplayer)
+		timer.Simple(1, function()
+			net.Start("Vermilion_ConsoleUpdate")
+			net.WriteTable(table.GetKeys(subcommands))
+			net.Send(vplayer)
+		end)
+	end)
+
+else
+	net.Receive("Vermilion_ConsoleUpdate", function()
+		subcommands = net.ReadTable()
+	end)
 end
 
 concommand.Add("vermilion", function(sender, cmd, args, fullstring)
@@ -33,11 +52,17 @@ concommand.Add("vermilion", function(sender, cmd, args, fullstring)
 		Vermilion.Log("Unknown Command!")
 		return
 	end
-	cmd(sender, table.remove(table.Copy(args), 1))
+	local cargs = table.Copy(args)
+	table.remove(cargs, 1)
+	cmd(sender, cargs)
 end, function(cmd, args)
-
+	local tab = {}
+	local nargs = string.Trim(args)
+	nargs = string.lower(nargs)
+	for i,k in pairs(subcommands) do
+		if(string.find(string.lower(i), nargs)) then
+			table.insert(tab, "vermilion " .. i)
+		end
+	end
+	return tab
 end, "Vermilion Base Command")
-
-Vermilion:AddCommand("dump_settings", function(sender, args)
-	PrintTable(Vermilion.Data)
-end)

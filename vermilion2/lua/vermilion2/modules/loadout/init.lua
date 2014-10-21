@@ -76,12 +76,12 @@ function MODULE:InitServer()
 		local rnk = net.ReadString()
 		local data = MODULE:GetData(rnk, defaultLoadout, true)
 		if(data != nil) then
-			net.Start("VGetLoadout")
+			MODULE:NetStart("VGetLoadout")
 			net.WriteString(rnk)
 			net.WriteTable(data)
 			net.Send(vplayer)
 		else
-			net.Start("VGetLoadout")
+			MODULE:NetStart("VGetLoadout")
 			net.WriteString(rnk)
 			net.WriteTable({})
 			net.Send(vplayer)
@@ -128,13 +128,13 @@ function MODULE:InitClient()
 		end
 	end)
 
-	Vermilion.Menu:AddCategory("Player Editors", 4)
+	Vermilion.Menu:AddCategory("player", 4)
 	
 	Vermilion.Menu:AddPage({
 			ID = "loadout",
 			Name = "Loadouts",
 			Order = 6,
-			Category = "Player Editors",
+			Category = "player",
 			Size = { 900, 560 },
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_loadout")
@@ -186,7 +186,7 @@ function MODULE:InitClient()
 					giveWeapon:SetDisabled(not (self:GetSelected()[1] != nil and allPermissions:GetSelected()[1] != nil))
 					takeWeapon:SetDisabled(not (self:GetSelected()[1] != nil and rankPermissions:GetSelected()[1] != nil))
 					giveDefault:SetDisabled(self:GetSelected()[1] == nil)
-					net.Start("VGetLoadout")
+					MODULE:NetStart("VGetLoadout")
 					net.WriteString(rankList:GetSelected()[1]:GetValue(1))
 					net.SendToServer()
 				end
@@ -226,7 +226,7 @@ function MODULE:InitClient()
 				
 				giveDefault = VToolkit:CreateButton("Give Default Loadout", function()
 					for i,k in pairs(rankPermissions:GetLines()) do
-						net.Start("VTakeLoadoutWeapons")
+						MODULE:NetStart("VTakeLoadoutWeapons")
 						net.WriteString(rankList:GetSelected()[1]:GetValue(1))
 						net.WriteString(k.ClassName)
 						net.SendToServer()
@@ -237,7 +237,7 @@ function MODULE:InitClient()
 					for i,k in pairs(defaultLoadout) do
 						rankPermissions:AddLine(list.Get("Weapon")[k].PrintName).ClassName = k
 						
-						net.Start("VGiveLoadoutWeapons")
+						MODULE:NetStart("VGiveLoadoutWeapons")
 						net.WriteString(rankList:GetSelected()[1]:GetValue(1))
 						net.WriteString(k)
 						net.SendToServer()
@@ -258,7 +258,7 @@ function MODULE:InitClient()
 						if(has) then continue end
 						rankPermissions:AddLine(k:GetValue(1)).ClassName = k.ClassName
 						
-						net.Start("VGiveLoadoutWeapons")
+						MODULE:NetStart("VGiveLoadoutWeapons")
 						net.WriteString(rankList:GetSelected()[1]:GetValue(1))
 						net.WriteString(k.ClassName)
 						net.SendToServer()
@@ -271,7 +271,7 @@ function MODULE:InitClient()
 				
 				takeWeapon = VToolkit:CreateButton("Take Weapon", function()
 					for i,k in pairs(rankPermissions:GetSelected()) do
-						net.Start("VTakeLoadoutWeapons")
+						MODULE:NetStart("VTakeLoadoutWeapons")
 						net.WriteString(rankList:GetSelected()[1]:GetValue(1))
 						net.WriteString(k.ClassName)
 						net.SendToServer()

@@ -18,46 +18,49 @@
 ]]
 
 local MODULE = Vermilion:CreateBaseModule()
-MODULE.Name = "Entity Limits"
-MODULE.ID = "limit_entities"
-MODULE.Description = "Prevent players from spawning certain entities."
+MODULE.Name = "NPC Limits"
+MODULE.ID = "limit_npc"
+MODULE.Description = "Prevent players from using certain NPCs."
 MODULE.Author = "Ned"
 MODULE.Permissions = {
-	"manage_entity_limits"
+	"manage_npc_limits"
 }
 MODULE.NetworkStrings = {
-	"VGetEntityLimits",
-	"VBlockEntity",
-	"VUnblockEntity"
+	"VGetNPCLimits",
+	"VBlockNPC",
+	"VUnblockNPC"
 }
 
 function MODULE:InitServer()
+
 	
-	self:AddHook("PlayerSpawnSENT", function(vplayer, class)
-		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), class)) then
-			Vermilion:AddNotification(vplayer, "You cannot spawn this SENT!", NOTIFY_ERROR)
+	self:AddHook("PlayerSpawnNPC", function(vplayer, npc_type)
+		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), npc_type)) then
+			Vermilion:AddNotification(vplayer, "You cannot spawn this NPC!", NOTIFY_ERROR)
 			return false
 		end
 	end)
 	
-	self:NetHook("VGetEntityLimits", function(vplayer)
+	
+	
+	self:NetHook("VGetNPCLimits", function(vplayer)
 		local rnk = net.ReadString()
 		local data = MODULE:GetData(rnk, {}, true)
 		if(data != nil) then
-			MODULE:NetStart("VGetEntityLimits")
+			MODULE:NetStart("VGetNPCLimits")
 			net.WriteString(rnk)
 			net.WriteTable(data)
 			net.Send(vplayer)
 		else
-			MODULE:NetStart("VGetEntityLimits")
+			MODULE:NetStart("VGetNPCLimits")
 			net.WriteString(rnk)
 			net.WriteTable({})
 			net.Send(vplayer)
 		end
 	end)
 	
-	self:NetHook("VBlockEntity", function(vplayer)
-		if(Vermilion:HasPermission(vplayer, "manage_entity_limits")) then
+	self:NetHook("VBlockNPC", function(vplayer)
+		if(Vermilion:HasPermission(vplayer, "manage_npc_limits")) then
 			local rnk = net.ReadString()
 			local weapon = net.ReadString()
 			if(not table.HasValue(MODULE:GetData(rnk, {}, true), weapon)) then
@@ -66,8 +69,8 @@ function MODULE:InitServer()
 		end
 	end)
 	
-	self:NetHook("VUnblockEntity", function(vplayer)
-		if(Vermilion:HasPermission(vplayer, "manage_entity_limits")) then
+	self:NetHook("VUnblockNPC", function(vplayer)
+		if(Vermilion:HasPermission(vplayer, "manage_npc_limits")) then
 			local rnk = net.ReadString()
 			local weapon = net.ReadString()
 			table.RemoveByValue(MODULE:GetData(rnk, {}, true), weapon)
@@ -78,16 +81,16 @@ end
 
 function MODULE:InitClient()
 
-	self:NetHook("VGetEntityLimits", function()
-		if(not IsValid(Vermilion.Menu.Pages["limit_entities"].Panel.RankList)) then return end
-		if(net.ReadString() != Vermilion.Menu.Pages["limit_entities"].Panel.RankList:GetSelected()[1]:GetValue(1)) then return end
+	self:NetHook("VGetNPCLimits", function()
+		if(not IsValid(Vermilion.Menu.Pages["limit_npc"].Panel.RankList)) then return end
+		if(net.ReadString() != Vermilion.Menu.Pages["limit_npc"].Panel.RankList:GetSelected()[1]:GetValue(1)) then return end
 		local data = net.ReadTable()
-		local blocklist = Vermilion.Menu.Pages["limit_entities"].Panel.RankBlockList
-		local ents = Vermilion.Menu.Pages["limit_entities"].Panel.Entities
+		local blocklist = Vermilion.Menu.Pages["limit_npc"].Panel.RankBlockList
+		local npcs = Vermilion.Menu.Pages["limit_npc"].Panel.NPCs
 		if(IsValid(blocklist)) then
 			blocklist:Clear()
 			for i,k in pairs(data) do
-				for i1,k1 in pairs(ents) do
+				for i1,k1 in pairs(npcs) do
 					if(k1.ClassName == k) then
 						blocklist:AddLine(k1.Name).ClassName = k
 					end
@@ -99,21 +102,21 @@ function MODULE:InitClient()
 	Vermilion.Menu:AddCategory("limits", 5)
 	
 	Vermilion.Menu:AddPage({
-			ID = "limit_entities",
-			Name = "Entities",
-			Order = 4,
+			ID = "limit_npc",
+			Name = "NPCs",
+			Order = 5,
 			Category = "limits",
 			Size = { 900, 560 },
 			Conditional = function(vplayer)
-				return Vermilion:HasPermission("manage_entity_limits")
+				return Vermilion:HasPermission("manage_npc_limits")
 			end,
 			Builder = function(panel)
-				local blockEntity = nil
-				local unblockEntity = nil
+				local blockNPC = nil
+				local unblockNPC = nil
 				local rankList = nil
-				local allEntites = nil
+				local allNPCs = nil
 				local rankBlockList = nil
-			
+							
 				
 				rankList = VToolkit:CreateList({ "Name" }, false, false)
 				rankList:SetPos(10, 30)
@@ -125,9 +128,9 @@ function MODULE:InitClient()
 				rankHeader:SetParent(panel)
 				
 				function rankList:OnRowSelected(index, line)
-					blockEntity:SetDisabled(not (self:GetSelected()[1] != nil and allEntites:GetSelected()[1] != nil))
-					unblockEntity:SetDisabled(not (self:GetSelected()[1] != nil and rankBlockList:GetSelected()[1] != nil))
-					MODULE:NetStart("VGetEntityLimits")
+					blockNPC:SetDisabled(not (self:GetSelected()[1] != nil and allNPCs:GetSelected()[1] != nil))
+					unblockNPC:SetDisabled(not (self:GetSelected()[1] != nil and rankBlockList:GetSelected()[1] != nil))
+					MODULE:NetStart("VGetNPCLimits")
 					net.WriteString(rankList:GetSelected()[1]:GetValue(1))
 					net.SendToServer()
 				end
@@ -138,34 +141,34 @@ function MODULE:InitClient()
 				rankBlockList:SetParent(panel)
 				panel.RankBlockList = rankBlockList
 				
-				local rankBlockListHeader = VToolkit:CreateHeaderLabel(rankBlockList, "Blocked Entities")
+				local rankBlockListHeader = VToolkit:CreateHeaderLabel(rankBlockList, "Blocked NPCs")
 				rankBlockListHeader:SetParent(panel)
 				
 				function rankBlockList:OnRowSelected(index, line)
-					unblockEntity:SetDisabled(not (self:GetSelected()[1] != nil and rankList:GetSelected()[1] != nil))
+					unblockNPC:SetDisabled(not (self:GetSelected()[1] != nil and rankList:GetSelected()[1] != nil))
 				end
 				
 				VToolkit:CreateSearchBox(rankBlockList)
 				
 				
-				allEntites = VToolkit:CreateList({"Name"})
-				allEntites:SetPos(panel:GetWide() - 250, 30)
-				allEntites:SetSize(240, panel:GetTall() - 40)
-				allEntites:SetParent(panel)
-				panel.AllEntities = allEntites
+				allNPCs = VToolkit:CreateList({"Name"})
+				allNPCs:SetPos(panel:GetWide() - 250, 30)
+				allNPCs:SetSize(240, panel:GetTall() - 40)
+				allNPCs:SetParent(panel)
+				panel.AllNPCs = allNPCs
 				
-				local allEntitesHeader = VToolkit:CreateHeaderLabel(allEntites, "All Entites")
-				allEntitesHeader:SetParent(panel)
+				local allNPCsHeader = VToolkit:CreateHeaderLabel(allNPCs, "All NPCs")
+				allNPCsHeader:SetParent(panel)
 				
-				function allEntites:OnRowSelected(index, line)
-					blockEntity:SetDisabled(not (self:GetSelected()[1] != nil and rankList:GetSelected()[1] != nil))
+				function allNPCs:OnRowSelected(index, line)
+					blockNPC:SetDisabled(not (self:GetSelected()[1] != nil and rankList:GetSelected()[1] != nil))
 				end
 				
-				VToolkit:CreateSearchBox(allEntites)
+				VToolkit:CreateSearchBox(allNPCs)
 				
 				
-				blockEntity = VToolkit:CreateButton("Block Entity", function()
-					for i,k in pairs(allEntites:GetSelected()) do
+				blockNPC = VToolkit:CreateButton("Block NPC", function()
+					for i,k in pairs(allNPCs:GetSelected()) do
 						local has = false
 						for i1,k1 in pairs(rankBlockList:GetLines()) do
 							if(k.ClassName == k1.ClassName) then has = true break end
@@ -173,20 +176,20 @@ function MODULE:InitClient()
 						if(has) then continue end
 						rankBlockList:AddLine(k:GetValue(1)).ClassName = k.ClassName
 						
-						MODULE:NetStart("VBlockEntity")
+						MODULE:NetStart("VBlockNPC")
 						net.WriteString(rankList:GetSelected()[1]:GetValue(1))
 						net.WriteString(k.ClassName)
 						net.SendToServer()
 					end
 				end)
-				blockEntity:SetPos(select(1, rankBlockList:GetPos()) + rankBlockList:GetWide() + 10, 100)
-				blockEntity:SetWide(panel:GetWide() - 20 - select(1, allEntites:GetWide()) - select(1, blockEntity:GetPos()))
-				blockEntity:SetParent(panel)
-				blockEntity:SetDisabled(true)
+				blockNPC:SetPos(select(1, rankBlockList:GetPos()) + rankBlockList:GetWide() + 10, 100)
+				blockNPC:SetWide(panel:GetWide() - 20 - select(1, allNPCs:GetWide()) - select(1, blockNPC:GetPos()))
+				blockNPC:SetParent(panel)
+				blockNPC:SetDisabled(true)
 				
-				unblockEntity = VToolkit:CreateButton("Unblock Entity", function()
+				unblockNPC = VToolkit:CreateButton("Unblock NPC", function()
 					for i,k in pairs(rankBlockList:GetSelected()) do
-						MODULE:NetStart("VUnblockEntity")
+						MODULE:NetStart("VUnblockNPC")
 						net.WriteString(rankList:GetSelected()[1]:GetValue(1))
 						net.WriteString(k.ClassName)
 						net.SendToServer()
@@ -194,33 +197,33 @@ function MODULE:InitClient()
 						rankBlockList:RemoveLine(k:GetID())
 					end
 				end)
-				unblockEntity:SetPos(select(1, rankBlockList:GetPos()) + rankBlockList:GetWide() + 10, 130)
-				unblockEntity:SetWide(panel:GetWide() - 20 - select(1, allEntites:GetWide()) - select(1, unblockEntity:GetPos()))
-				unblockEntity:SetParent(panel)
-				unblockEntity:SetDisabled(true)
+				unblockNPC:SetPos(select(1, rankBlockList:GetPos()) + rankBlockList:GetWide() + 10, 130)
+				unblockNPC:SetWide(panel:GetWide() - 20 - select(1, allNPCs:GetWide()) - select(1, unblockNPC:GetPos()))
+				unblockNPC:SetParent(panel)
+				unblockNPC:SetDisabled(true)
 				
-				panel.BlockEntity = blockEntity
-				panel.UnblockEntity = unblockEntity
+				panel.BlockNPC = blockNPC
+				panel.UnblockNPC = unblockNPC
 				
 				
 			end,
 			Updater = function(panel)
-				if(panel.Entities == nil) then
-					panel.Entities = {}
-					for i,k in pairs(list.Get("SpawnableEntities")) do
-						table.insert(panel.Entities, { Name = k.PrintName, ClassName = k.ClassName })
+				if(panel.NPCs == nil) then
+					panel.NPCs = {}
+					for i,k in pairs(list.Get("NPC")) do
+						table.insert(panel.NPCs, { Name = k.Name, ClassName = k.Class })
 					end
 				end
-				if(table.Count(panel.AllEntities:GetLines()) == 0) then
-					for i,k in pairs(panel.Entities) do
-						local ln = panel.AllEntities:AddLine(k.Name)
+				if(table.Count(panel.AllNPCs:GetLines()) == 0) then
+					for i,k in pairs(panel.NPCs) do
+						local ln = panel.AllNPCs:AddLine(k.Name)
 						ln.ClassName = k.ClassName
 					end
 				end
 				Vermilion:PopulateRankTable(panel.RankList, false, true)
 				panel.RankBlockList:Clear()
-				panel.BlockEntity:SetDisabled(true)
-				panel.UnblockEntity:SetDisabled(true)
+				panel.BlockNPC:SetDisabled(true)
+				panel.UnblockNPC:SetDisabled(true)
 			end
 		})
 	

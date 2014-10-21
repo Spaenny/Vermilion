@@ -26,3 +26,59 @@ function Vermilion.GetFileName(name)
 		return "vermilion2/vermilion_unknown_" .. name .. ".txt"
 	end
 end
+
+function Vermilion.ParseChatLineForCommand(line)
+	local command = string.Trim(string.sub(line, 1, string.find(line, " ") or nil))
+	local response = {}
+	for i,k in pairs(Vermilion.ChatCommands) do
+		if(string.find(line, " ")) then
+			if(command == i) then
+				table.insert(response, { Name = i, Syntax = k.Syntax })
+			end
+		elseif(string.StartWith(i, command)) then
+			table.insert(response, { Name = i, Syntax = k.Syntax })
+		end
+	end
+	for i,k in pairs(Vermilion.ChatAliases) do
+		if(string.find(line, " ")) then
+			if(command == i) then
+				table.insert(response, { Name = i, Syntax = "(alias of " .. k .. ") - " .. Vermilion.ChatCommands[k].Syntax })
+			end
+		elseif(string.StartWith(i, command)) then
+			table.insert(response, { Name = i, Syntax = "(alias of " .. k .. ") - " .. Vermilion.ChatCommands[k].Syntax })
+		end
+	end
+	
+	return command, response
+end
+
+function Vermilion.ParseChatLineForParameters(line)
+	local parts = string.Explode(" ", line, false)
+	local parts2 = {}
+	local part = ""
+	local isQuoted = false
+	for i,k in pairs(parts) do
+		if(isQuoted and string.find(k, "\"")) then
+			table.insert(parts2, string.Replace(part .. " " .. k, "\"", ""))
+			isQuoted = false
+			part = ""
+		elseif(not isQuoted and string.find(k, "\"")) then
+			part = k
+			isQuoted = true
+		elseif(isQuoted) then
+			part = part .. " " .. k
+		else
+			table.insert(parts2, k)
+		end
+	end
+	if(isQuoted) then table.insert(parts2, string.Replace(part, "\"", "")) end
+	parts = {}
+	for i,k in pairs(parts2) do
+		--if(k != nil and k != "") then
+			table.insert(parts, k)
+		--end
+	end
+	table.remove(parts, 1)
+	
+	return parts
+end

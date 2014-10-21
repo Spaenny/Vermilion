@@ -20,7 +20,7 @@
 local MODULE = Vermilion:CreateBaseModule()
 MODULE.Name = "Auto-Promote"
 MODULE.ID = "auto_promote"
-MODULE.Description = "Automatically promotes users to different ranks depending on playtime"
+MODULE.Description = "Automatically promotes users to different ranks depending on playtime."
 MODULE.Author = "Ned"
 MODULE.Permissions = {
 	"manage_autopromote"
@@ -31,19 +31,19 @@ function MODULE:InitServer()
 end
 
 function MODULE:InitClient()
-	Vermilion.Menu:AddCategory("Ranks", 3)
+	Vermilion.Menu:AddCategory("ranks", 3)
 
 	Vermilion.Menu:AddPage({
 			ID = "autopromote",
 			Name = "Auto-Promote",
 			Order = 6,
-			Category = "Ranks",
+			Category = "ranks",
 			Size = { 600, 560 },
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_autopromote")
 			end,
 			Builder = function(panel)
-				local label = VToolkit:CreateLabel("Under Construction")
+				local label = VToolkit:CreateLabel(Vermilion:TranslateStr("under_construction"))
 				label:SetFont("DermaLarge")
 				label:SizeToContents()
 				label:SetPos((panel:GetWide() - label:GetWide()) / 2, (panel:GetTall() - label:GetTall()) / 2)

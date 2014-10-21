@@ -17,7 +17,14 @@
  in any way, nor claims to be so. 
 ]]
 
-if(SERVER) then AddCSLuaFile() end
+if(SERVER) then 
+	AddCSLuaFile()
+	NOTIFY_GENERIC = 0
+	NOTIFY_ERROR = 1
+	NOTIFY_UNDO = 2
+	NOTIFY_HINT = 3
+	NOTIFY_CLEANUP = 4
+end
 if(not file.Exists("vermilion2/", "DATA")) then
 	file.CreateDir("vermilion2")
 end
@@ -88,11 +95,13 @@ Vermilion.Log("Starting up...")
 local files = {
 	{ "vtoolkit/toolkit.lua", false, true, true },
 	{ "vermilion2/utils.lua", true, true, true },
-	{ "vermilion2/basecommand.lua", false, false, true },
+	{ "vermilion2/basecommand.lua", true, true, true },
 	{ "vermilion2/shared.lua", true, true, true },
 	{ "vermilion2/config.lua", false, false, true },
 	{ "vermilion2/cl_config.lua", true, true, false },
-	{ "vermilion2/menuclient.lua", true, true, false }
+	{ "vermilion2/menuclient.lua", true, true, false },
+	{ "vermilion2/chatcommands.lua", false, false, true },
+	{ "vermilion2/chatpredict.lua", true, true, true }
 }
 
 local clientfiles = 0

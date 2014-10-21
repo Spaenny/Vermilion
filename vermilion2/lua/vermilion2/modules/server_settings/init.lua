@@ -20,7 +20,7 @@
 local MODULE = Vermilion:CreateBaseModule()
 MODULE.Name = "Server Settings"
 MODULE.ID = "server_settings"
-MODULE.Description = "Server Options"
+MODULE.Description = "Provides a collection of basic options for administrating the server."
 MODULE.Author = "Ned"
 MODULE.Permissions = {
 	"manage_server",
@@ -35,12 +35,148 @@ MODULE.Permissions = {
 	"can_spray",
 	"chat",
 	"use_voip",
-	"hear_voip"
+	"hear_voip",
+	"add_voip_channel",
+	"join_voip_channel",
+	"delete_voip_channel"
 }
 MODULE.NetworkStrings = {
 	"VServerGetProperties", -- used to build the settings page
 	"VServerUpdate",
 }
+
+MODULE.DefaultVoIPChannels = {
+	{ Name = "Default", Password = nil }
+}
+
+function MODULE:AddVoIPChannel(name, password)
+	for i,k in pairs(self:GetData("voip_channels", self.DefaultVoIPChannels, true)) do
+		if(k.Name == name) then return false end
+	end
+	local tPassword = nil
+	if(password != nil) then
+		tPassword = util.CRC(password)
+	end
+	table.insert(self:GetData("voip_channels", self.DefaultVoIPChannels, true), { Name = name, Password = tPassword })
+	return true
+end
+
+function MODULE:JoinChannel(vplayer, chan, pass)
+	local chanObj = nil
+	for i,k in pairs(self:GetData("voip_channels", self.DefaultVoIPChannels, true)) do
+		if(k.Name == chan) then
+			chanObj = k
+			break
+		end
+	end
+	if(chanObj != nil) then
+		if(chanObj.Password != nil) then
+			if(pass == nil) then return "BAD_PASSWORD" end
+			if(chanObj.Password != util.CRC(pass)) then
+				return "BAD_PASSWORD"
+			end
+		end
+		Vermilion:GetUser(vplayer).VoIPChannel = chan
+		return "GOOD"
+	end
+	return "NO_SUCH_CHAN"
+end
+
+function MODULE:RegisterChatCommands()
+
+	Vermilion:AddChatCommand("addchan", function(sender, text, log)
+		if(Vermilion:HasPermission(sender, "add_voip_channel")) then
+			if(not MODULE:AddVoIPChannel(text[1], text[2])) then
+				log("VoIP Channel already exists!", NOTIFY_ERROR)
+			else
+				log("Created VoIP Channel!")
+			end
+		end
+	end, "<name> [password]")
+	
+	Vermilion:AddChatCommand("delchan", function(sender, text, log)
+		if(Vermilion:HasPermission(sender, "delete_voip_channel")) then
+			local has = false
+			for i,k in pairs(MODULE:GetData("voip_channels", MODULE.DefaultVoIPChannels, true)) do
+				if(k.Name == text[1]) then has = k break end
+			end
+			if(text[1] == "Default") then has = false end
+			if(not has) then
+				log("No such VoIP Channel!", NOTIFY_ERROR)
+				return
+			end
+			table.RemoveByValue(MODULE:GetData("voip_channels", MODULE.DefaultVoIPChannels, true), has)
+			for i,k in pairs(Vermilion.Data.Users) do
+				if(k.VoIPChannel == text[1]) then
+					k.VoIPChannel = "Default"
+				end
+			end
+			log("Removed VoIP Channel!")
+		end
+	end, "<chan>", function(pos, current)
+		if(pos == 1) then
+			local tab = {}
+			for i,k in pairs(MODULE:GetData("voip_channels", MODULE.DefaultVoIPChannels, true)) do
+				if(string.find(string.lower(k.Name), string.lower(current))) then
+					table.insert(tab, k.Name)
+				end
+			end
+			return tab
+		end
+	end)
+	
+	Vermilion:AddChatCommand("changechanpass", function(sender, text, log)
+		if(Vermilion:HasPermission(sender, "add_voip_channel")) then
+			local has = false
+			for i,k in pairs(MODULE:GetData("voip_channels", MODULE.DefaultVoIPChannels, true)) do
+				if(k.Name == text[1]) then has = k break end
+			end
+			if(has.Name == "Default") then
+				
+			end
+		end
+	end, "<chan> [oldpass] <newpass>")
+	
+	Vermilion:AddChatCommand("joinchan", function(sender, text, log)
+		if(Vermilion:HasPermission(sender, "join_voip_channel")) then
+			local result = MODULE:JoinChannel(sender, text[1], text[2])
+			if(result == "BAD_PASSWORD") then
+				log("Bad VoIP Channel password!", NOTIFY_ERROR)
+			elseif(result == "NO_SUCH_CHAN") then
+				log("No such VoIP Channel!", NOTIFY_ERROR)
+			else
+				log("Joined VoIP Channel!")
+			end
+		end
+	end, "<channel> [password]", function(pos, current, all)
+		if(pos == 1) then
+			local tab = {}
+			for i,k in pairs(MODULE:GetData("voip_channels", MODULE.DefaultVoIPChannels, true)) do
+				if(string.find(string.lower(k.Name), string.lower(current))) then
+					table.insert(tab, k.Name)
+				end
+			end
+			return tab
+		end
+		if(pos == 2) then
+			local chan = nil
+			for i,k in pairs(MODULE:GetData("voip_channels", MODULE.DefaultVoIPChannels, true)) do
+				if(k.Name == all[1]) then
+					chan = k
+					break
+				end
+			end
+			if(chan != nil) then
+				if(chan.Password == nil) then
+					return {{ Name = "", Syntax = "No password required!" }}
+				else
+					return {{ Name = "", Syntax = "Password Required!" }}
+				end
+			end
+		end
+	end)
+	
+end
 
 local categories = {
 	{ Name = "Limits", Order = 0 },
@@ -54,11 +190,11 @@ local options = {
 			"All Players",
 			"Permissions Based"
 		}, Category = "Limits", CategoryWeight = 0, Default = 3 },
-	--[[ { Name = "enable_limit_remover", GuiText = "Spawn Limit Remover:", Type = "Combobox", Options = {
+	{ Module = "limit_spawn", Name = "enable_limit_remover", GuiText = "Spawn Limit Remover:", Type = "Combobox", Options = {
 			"Off",
 			"All Players",
 			"Permissions Based"
-		}, Category = "Limits", CategoryWeight = 0, Default = 3, Incomplete = true }, ]]
+		}, Category = "Limits", CategoryWeight = 0, Default = 3 },
 	{ Name = "enable_no_damage", GuiText = "Disable Damage:", Type = "Combobox", Options = {
 			"Off",
 			"All Players",
@@ -131,6 +267,18 @@ local options = {
 	--{ Name = "respect_rank_order", GuiText = "Enable Rank Hierarchy-Based Immunity", Type = "Checkbox", Category = "Immunity", CategoryWeight = 2, Default = true }
 }
 
+function MODULE:AddCategory(name, order)
+	for i,k in pairs(categories) do
+		if(k.Name == name) then return end
+	end
+	table.insert(categories, { Name = name, Order = order })
+end
+
+function MODULE:AddOption(mod, name, guitext, typ, category, categoryweight, defaultval, permission, otherdat)
+	otherdat = otherdat or {}
+	table.insert(options, table.Merge({ Module = mod, Name = name, GuiText = guitext, Type = typ, Category = category, CategoryWeight = categoryweight, Default = defaultval, Permission = permission}, otherdat))
+end
+
 function MODULE:InitServer()
 
 	self:NetHook("VServerGetProperties", function(vplayer)
@@ -144,7 +292,7 @@ function MODULE:InitServer()
 			end
 			tab[tostring(k.Module) .. k.Name] = val
 		end
-		net.Start("VServerGetProperties")
+		MODULE:NetStart("VServerGetProperties")
 		net.WriteTable(tab)
 		net.Send(vplayer)
 	end)
@@ -297,13 +445,29 @@ function MODULE:InitServer()
 			if(mode == 2) then
 				return false
 			elseif(mode == 3) then
-				return true
+				return MODULE:CalcVoIPChannels(listener, talker, true)
 			elseif(mode == 4) then
 				if(not Vermilion:HasPermission(talker, "use_voip")) then return false end
 				if(not Vermilion:HasPermission(listener, "hear_voip")) then return false end
+				return MODULE:CalcVoIPChannels(listener, talker, true)
 			end
 		end
 	end)
+	
+	function MODULE:CalcVoIPChannels(listener, talker, default)
+		if(IsValid(listener) and IsValid(talker)) then
+			local vListener = Vermilion:GetUser(listener)
+			local vTalker = Vermilion:GetUser(talker)
+			if(vListener.VoIPChannel == nil) then
+				vListener.VoIPChannel = "Default"
+			end
+			if(vTalker.VoIPChannel == nil) then
+				vTalker.VoIPChannel = "Default"
+			end
+			return vListener.VoIPChannel == vTalker.VoIPChannel
+		end
+		return default
+	end
 
 
 end
@@ -333,13 +497,13 @@ function MODULE:InitClient()
 	end)
 
 		
-	Vermilion.Menu:AddCategory("Server Settings", 2)
+	Vermilion.Menu:AddCategory("server", 2)
 	
 	Vermilion.Menu:AddPage({
 		ID = "server_settings",
 		Name = "Basic Settings",
 		Order = 0,
-		Category = "Server Settings",
+		Category = "server",
 		Size = { 600, 560 },
 		Conditional = function(vplayer)
 			return Vermilion:HasPermission("manage_server")
@@ -384,7 +548,7 @@ function MODULE:InitClient()
 					
 					function combobox:OnSelect(index)
 						if(MODULE.UpdatingGUI) then return end
-						net.Start("VServerUpdate")
+						MODULE:NetStart("VServerUpdate")
 						net.WriteTable({{ Module = k.Module, Name = k.Name, Value = index}})
 						net.SendToServer()
 					end
@@ -421,7 +585,7 @@ function MODULE:InitClient()
 					
 					function cb:OnChange()
 						if(MODULE.UpdatingGUI) then return end
-						net.Start("VServerUpdate")
+						MODULE:NetStart("VServerUpdate")
 						net.WriteTable({{Module = k.Module, Name = k.Name, Value = cb:GetChecked()}})
 						net.SendToServer()
 					end
@@ -467,7 +631,7 @@ function MODULE:InitClient()
 					
 					function slider:OnChange(index)
 						if(MODULE.UpdatingGUI) then return end
-						net.Start("VServerUpdate")
+						MODULE:NetStart("VServerUpdate")
 						net.WriteTable({{ Module = k.Module, Name = k.Name, Value = index}})
 						net.SendToServer()
 					end
@@ -501,7 +665,7 @@ function MODULE:InitClient()
 			MODULE.UpdatingGUI = false
 		end,
 		Updater = function(panel)
-			net.Start("VServerGetProperties")
+			MODULE:NetStart("VServerGetProperties")
 			net.SendToServer()
 		end
 	})
@@ -510,7 +674,7 @@ function MODULE:InitClient()
 		ID = "motd",
 		Name = "MOTD",
 		Order = 1,
-		Category = "Server Settings",
+		Category = "server",
 		Size = { 500, 500 },
 		Conditional = function(vplayer)
 			return Vermilion:HasPermission("set_motd")
@@ -533,7 +697,7 @@ function MODULE:InitClient()
 			isHTML:SizeToContents()
 			
 			local motdVars = VToolkit:CreateButton("Show Variables", function()
-			
+				
 			end)
 			motdVars:SetPos(370, 425)
 			motdVars:SetSize(120, 20)
@@ -553,13 +717,13 @@ function MODULE:InitClient()
 		ID = "userdata",
 		Name = "Userdata Browser",
 		Order = 2,
-		Category = "Server Settings",
+		Category = "server",
 		Size = { 600, 560 },
 		Conditional = function(vplayer)
 			return Vermilion:HasPermission("manage_server")
 		end,
 		Builder = function(panel)
-			local label = VToolkit:CreateLabel("Under Construction")
+			local label = VToolkit:CreateLabel(Vermilion:TranslateStr("under_construction"))
 			label:SetFont("DermaLarge")
 			label:SizeToContents()
 			label:SetPos((panel:GetWide() - label:GetWide()) / 2, (panel:GetTall() - label:GetTall()) / 2)
@@ -571,13 +735,13 @@ function MODULE:InitClient()
 		ID = "voip_channels",
 		Name = "VoIP Channels",
 		Order = 3,
-		Category = "Server Settings",
+		Category = "server",
 		Size = { 600, 560 },
 		Conditional = function(vplayer)
 			return Vermilion:HasPermission("manage_server")
 		end,
 		Builder = function(panel)
-			local label = VToolkit:CreateLabel("Under Construction")
+			local label = VToolkit:CreateLabel(Vermilion:TranslateStr("under_construction"))
 			label:SetFont("DermaLarge")
 			label:SizeToContents()
 			label:SetPos((panel:GetWide() - label:GetWide()) / 2, (panel:GetTall() - label:GetTall()) / 2)

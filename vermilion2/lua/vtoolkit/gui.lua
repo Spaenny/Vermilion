@@ -17,34 +17,90 @@
  in any way, nor claims to be so. 
 ]]
 
-VToolkit.Dark = true
 VToolkit.Skins = {}
-VToolkit.ActiveSkin = "Basic"
 
 function VToolkit:RegisterSkin(name, skin)
 	self.Skins[name] = skin
 end
 
+for i,k in pairs(file.Find("vtoolkit/skins/*.lua", "LUA")) do
+	Vermilion.Log("Loading skin: " .. k)
+	local func = CompileFile("vtoolkit/skins/" .. k)
+	if(isfunction(func)) then
+		if(SERVER) then 
+			AddCSLuaFile("vtoolkit/skins/" .. k)
+		else
+			func()
+		end
+	end
+end
+
+if(SERVER) then return end
+
+-- Patches
+local PanelMeta = FindMetaTable("Panel")
+
+function PanelMeta:GetX()
+	return select(1, self:GetPos())
+end
+
+function PanelMeta:GetY()
+	return select(2, self:GetPos())
+end
+
+local function calcNotifyFormula(x, time)
+	assert(x >= 0 and time > 0)
+	local grMax = 1.763 * time
+	local grTime = 1 / time
+	local xClamp = math.Clamp(x, 0, grMax)
+	local result = ((math.pow((grTime * xClamp) - 1.11, 3) - 3 * math.pow((grTime * xClamp) - 1.11, 2)) + 5) / 4
+	return result, result >= grMax
+end
+
+VToolkit.NotificationAnim = Derma_Anim("VToolkit_SizeBounce", nil, function(panel, anim, delta, data)
+	-- formula = (((x - 1)^3 - 3(x - 1)^2) + 5) / 4 { 0 <= x <= 4.732 }
+	if((data.Done or data.Pos >= 1.763 * anim.Length) and not data.FinishedN) then
+		panel:SetSize(panel.MaxW, panel.MaxH)
+		--panel:SetPos(panel.IntendedX - panel.MaxW, panel.IntendedY + panel.MaxH)
+		if(isfunction(data.Callback)) then data.Callback(panel, anim, data) end
+		data.FinishedN = true
+		return
+	elseif(data.FinishedN) then
+		return
+	end
+	data.Pos = data.Pos + delta
+	local pos = data.Pos
+	
+	local num,finished = calcNotifyFormula(pos, anim.Length)
+	
+	panel:SetSize(panel.MaxW * num, panel.MaxH * num)
+	panel:SetPos((panel.IntendedX - (panel:GetWide() / 2)) - (panel.MaxW / 2), (panel.IntendedY + (panel:GetTall() / 2)) + ((panel.MaxH + 5) / 2))
+	
+	if(finished) then data.Done = true end
+end)
+
+function VToolkit:CreateNotificationAnimForPanel(panel)
+	local copy = table.Copy(self.NotificationAnim)
+	copy.Panel = panel
+	return copy
+end
+
+VToolkit.Dark = true
+CreateClientConVar("vtoolkit_skin", "Basic", true, false)
+
+
+
 function VToolkit:GetActiveSkin()
-	assert(self.ActiveSkin != nil, "Bad active skin!")
-	assert(self.Skins[self.ActiveSkin] != nil, "No active skin!")
-	return self.Skins[self.ActiveSkin]
+	assert(GetConVarString("vtoolkit_skin") != nil, "Bad active skin!")
+	assert(self.Skins[GetConVarString("vtoolkit_skin")] != nil, "No active skin!")
+	return self.Skins[GetConVarString("vtoolkit_skin")]
 end
 
 function VToolkit:GetSkinComponent(typ)
 	return self:GetActiveSkin()[typ]
 end
 
-for i,k in pairs(file.Find("vtoolkit/skins/*.lua", "LUA")) do
-	print("Loading skin: " .. k)
-	local func = CompileFile("vtoolkit/skins/" .. k)
-	if(isfunction(func)) then
-		if(SERVER) then 
-			AddCSLuaFile("vtoolkit/skins/" .. k)
-		end
-		func()
-	end
-end
+
 
 function VToolkit:SetDark(dark)
 	self.Dark = dark
@@ -147,7 +203,7 @@ end
 function VToolkit:CreateAvatarImage(vplayer, size)
 	local sizes = { 16, 32, 64, 84, 128, 184 }
 	if(not table.HasValue(sizes, size)) then
-		print("Invalid size (" .. tostring(size) .. ") for AvatarImage!")
+		Vermilion.Log("Invalid size (" .. tostring(size) .. ") for AvatarImage!")
 		return
 	end
 	local aimg = vgui.Create("AvatarImage")
@@ -422,7 +478,7 @@ function VToolkit:CreateTextInput(text, completeFunc)
 	self:SetDark(true)
 end
 
-function VToolkit:CreateList(cols, multiselect, sortable)
+function VToolkit:CreateList(cols, multiselect, sortable, colrunner)
 	if(sortable == nil) then sortable = true end
 	if(multiselect == nil) then multiselect = true end
 	local lst = vgui.Create("DListView")
@@ -443,7 +499,10 @@ function VToolkit:CreateList(cols, multiselect, sortable)
 	end
 	lst:SetMultiSelect(multiselect)
 	for i,col in pairs(cols) do
-		lst:AddColumn(col)
+		local colimpl = lst:AddColumn(col)
+		if(isfunction(colrunner)) then
+			colrunner(i, colimpl)
+		end
 	end
 	if(not sortable) then
 		lst:SetSortable(false)
@@ -507,6 +566,21 @@ function VToolkit:CreateSearchBox(listView, changelogic)
 	local box = self:CreateTextbox()
 	box:SetUpdateOnType(true)
 	box:SetTall(25)
+	
+	listView.OldAddLine = listView.AddLine
+	function listView:AddLine(text)
+		local ln = self:OldAddLine(text)
+		for i1,k1 in pairs(listView.Columns) do
+			if(string.find(string.lower(ln:GetValue(i1)), string.lower(box:GetValue()))) then
+				ln:SetVisible(true)
+				break
+			else
+				ln:SetVisible(false)
+				break
+			end
+		end
+		return ln
+	end
 	
 	changelogic = changelogic or function()
 		local val = box:GetValue()
