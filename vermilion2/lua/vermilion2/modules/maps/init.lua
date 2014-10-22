@@ -487,20 +487,35 @@ function MODULE:InitClient()
 			if(MODULE.SoundTimer != MODULE.MapChangeIn) then
 				local tr = MODULE.MapChangeIn
 				if(Vermilion:GetModule("sound") != nil) then
+					local mod = Vermilion:GetModule("sound")
 					if(tr == 180) then
-						Vermilion:PlaySound("npc/overwatch/cityvoice/fcitadel_3minutestosingularity.wav", "MapChange")
+						mod:QueueSoundFile("npc/overwatch/cityvoice/fcitadel_3minutestosingularity.wav", "MapChange", nil, function(data)
+							mod:PlayChannel("MapChange")
+						end)
 					elseif(tr == 120) then
-						Vermilion:PlaySound("npc/overwatch/cityvoice/fcitadel_2minutestosingularity.wav", "MapChange")
+						mod:QueueSoundFile("npc/overwatch/cityvoice/fcitadel_2minutestosingularity.wav", "MapChange", nil, function(data)
+							mod:PlayChannel("MapChange")
+						end)
 					elseif(tr == 60) then
-						Vermilion:PlaySound("npc/overwatch/cityvoice/fcitadel_1minutetosingularity.wav", "MapChange")
+						mod:QueueSoundFile("npc/overwatch/cityvoice/fcitadel_1minutetosingularity.wav", "MapChange", nil, function(data)
+							mod:PlayChannel("MapChange")
+						end)
 					elseif(tr == 45) then
-						Vermilion:PlaySound("npc/overwatch/cityvoice/fcitadel_45sectosingularity.wav", "MapChange")
+						mod:QueueSoundFile("npc/overwatch/cityvoice/fcitadel_45sectosingularity.wav", "MapChange", nil, function(data)
+							mod:PlayChannel("MapChange")
+						end)
 					elseif(tr == 30) then
-						Vermilion:PlaySound("npc/overwatch/cityvoice/fcitadel_30sectosingularity.wav", "MapChange")
+						mod:QueueSoundFile("npc/overwatch/cityvoice/fcitadel_30sectosingularity.wav", "MapChange", nil, function(data)
+							mod:PlayChannel("MapChange")
+						end)
 					elseif(tr == 15) then
-						Vermilion:PlaySound("npc/overwatch/cityvoice/fcitadel_15sectosingularity.wav", "MapChange")
+						mod:QueueSoundFile("npc/overwatch/cityvoice/fcitadel_15sectosingularity.wav", "MapChange", nil, function(data)
+							mod:PlayChannel("MapChange")
+						end)
 					elseif(tr == 10) then
-						Vermilion:PlaySound("npc/overwatch/cityvoice/fcitadel_10sectosingularity.wav", "MapChange")
+						mod:QueueSoundFile("npc/overwatch/cityvoice/fcitadel_10sectosingularity.wav", "MapChange", nil, function(data)
+							mod:PlayChannel("MapChange")
+						end)
 					end
 				end
 				MODULE.SoundTimer = MODULE.MapChangeIn

@@ -23,7 +23,7 @@ function VToolkit.LookupPlayer(name, log)
 	if(name == nil) then return nil end
 	
 	for i,ply in pairs(VToolkit.GetValidPlayers()) do
-		if(string.find(string.lower(ply:GetName()), string.lower(name))) then
+		if(string.find(string.lower(ply:GetName()), string.lower(name), 0, true)) then
 			table.insert(results, ply)
 		end
 	end

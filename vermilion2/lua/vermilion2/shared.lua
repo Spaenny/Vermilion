@@ -478,14 +478,15 @@ if(CLIENT) then
 		end
 		local notify = buildNotify(text, typ)
 		notify.IntendedX = 300
-		notify.IntendedY = select(2, notifybg:ChildrenSize()) - notify.MaxH
+		notify.IntendedY = select(2, notifybg:ChildrenSize()) + (notify.MaxH / 2)
 		notify:SetParent(notifybg)
 		table.insert(notifications, notify)
 		
 		local anim = VToolkit:CreateNotificationAnimForPanel(notify)
 		local finished = false
 		local animData = {
-			Pos = 0,
+			Pos = -1,
+			OnlyOne = table.Count(notifybg:GetChildren()) == 1,
 			Callback = function()
 				finished = true
 				timer.Simple(time or 10, function()
@@ -506,7 +507,7 @@ if(CLIENT) then
 			if(not finished) then anim:Run() else notify.AnimationThink = nil end
 		end
 		
-		anim:Start(1.75, animData)
+		anim:Start(3, animData)
 		
 	end
 	

@@ -50,6 +50,7 @@ MODULE.DefaultVoIPChannels = {
 }
 
 function MODULE:AddVoIPChannel(name, password)
+	if(name == nil or name == "") then return false end
 	for i,k in pairs(self:GetData("voip_channels", self.DefaultVoIPChannels, true)) do
 		if(k.Name == name) then return false end
 	end

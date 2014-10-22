@@ -95,7 +95,11 @@ function MODULE:InitClient()
 					
 					function combobox:OnSelect(index)
 						if(MODULE.UpdatingGUI) then return end
-						RunConsoleCommand(k.ConVar, index)
+						if(k.SetAs == "text") then
+							RunConsoleCommand(k.ConVar, self:GetOptionText(index))
+						else
+							RunConsoleCommand(k.ConVar, index)
+						end
 					end
 					
 					panel:SetSize(select(1, combobox:GetPos()) + combobox:GetWide() + 10, combobox:GetTall() + 5)

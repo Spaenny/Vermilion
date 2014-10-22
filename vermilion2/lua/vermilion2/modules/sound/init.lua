@@ -24,17 +24,29 @@ MODULE.Description = "Plays sounds from files, the internet and the SoundCloud A
 MODULE.Author = "Ned"
 MODULE.Permissions = {
 	"playsound",
-	"stopsound"
+	"playstream",
+	"playsoundcloud",
+	"stopsound",
+	"pausesound",
+	"unpausesound"
 }
 MODULE.NetworkStrings = {
+	"VQueueSound",
+	"VQueueStream",
+	"VQueueSoundCloud",
 	"VPlaySound",
 	"VPlayStream",
 	"VPlaySoundCloud",
-	"VStop"
+	"VStop",
+	"VPause",
+	"VUnpause"
 }
 
-MODULE.Channels = {}
+MODULE.TYPE_FILE = -1
+MODULE.TYPE_STREAM = -2
+MODULE.TYPE_SOUNDCLOUD = -3
 
+MODULE.Channels = {}
 MODULE.Visualisers = {}
 
 function MODULE:RegisterVisualiser(name, drawFunc)
@@ -42,7 +54,192 @@ function MODULE:RegisterVisualiser(name, drawFunc)
 end
 
 function MODULE:RegisterChatCommands()
+	Vermilion:AddChatCommand("playsound", function(sender, text, log)
+		if(Vermilion:HasPermission(sender, "playsound")) then
+			local path = nil
+			local target = VToolkit.GetValidPlayers(false)
+			local loop = false
+			local volume = 100
+			
+			if(table.Count(text) < 1) then
+				log("Missing path!", NOTIFY_ERROR)
+				return
+			end
+			
+			path = text[1]
+			
+			if(table.Count(text) >= 2) then
+				if(text[2] != "nil") then
+					target = VToolkit.LookupPlayer(text[2])
+					if(not IsValid(target)) then
+						log("No such player!", NOTIFY_ERROR)
+						return
+					end
+				end
+			end
+			
+			if(table.Count(text) >= 3) then
+				if(tobool(text[3]) != nil) then
+					loop = tobool(text[3])
+				else
+					log("Invalid loop parameter!", NOTIFY_ERROR)
+					return
+				end
+			end
+			
+			if(table.Count(text) >= 4) then
+				if(tonumber(text[4]) != nil) then
+					volume = tonumber(text[4])
+					if(volume < 0 or volume > 100) then
+						log("Invalid volume parameter!", NOTIFY_ERROR)
+						return
+					end
+				else
+					log("Invalid volume parameter!", NOTIFY_ERROR)
+					return
+				end
+			end
+			
+			MODULE:SendSound(target, path, "BaseSound", { Volume = volume, Loop = loop })
+			Vermilion:BroadcastNotification(sender:GetName() .. " is playing a sound.")
+		end
+	end, "<path> [target:nil/name] [loop:true/false] [volume:0-100]")
 	
+	Vermilion:AddChatCommand("playstream", function(sender, text, log)
+		if(Vermilion:HasPermission(sender, "playsound")) then
+			local url = nil
+			local target = VToolkit.GetValidPlayers(false)
+			local loop = false
+			local volume = 100
+			
+			if(table.Count(text) < 1) then
+				log("Missing URL!", NOTIFY_ERROR)
+				return
+			end
+			
+			url = text[1]
+			
+			if(table.Count(text) >= 2) then
+				if(text[2] != "nil") then
+					target = VToolkit.LookupPlayer(text[2])
+					if(not IsValid(target)) then
+						log("No such player!", NOTIFY_ERROR)
+						return
+					end
+				end
+			end
+			
+			if(table.Count(text) >= 3) then
+				if(tobool(text[3]) != nil) then
+					loop = tobool(text[3])
+				else
+					log("Invalid loop parameter!", NOTIFY_ERROR)
+					return
+				end
+			end
+			
+			if(table.Count(text) >= 4) then
+				if(tonumber(text[4]) != nil) then
+					volume = tonumber(text[4])
+					if(volume < 0 or volume > 100) then
+						log("Invalid volume parameter!", NOTIFY_ERROR)
+						return
+					end
+				else
+					log("Invalid volume parameter!", NOTIFY_ERROR)
+					return
+				end
+			end
+			
+			MODULE:SendStream(target, url, "BaseSound", { Volume = volume, Loop = loop })
+			Vermilion:BroadcastNotification(sender:GetName() .. " is playing a stream.")
+		end
+	end, "<url> [target:nil/name] [loop:true/false] [volume:0-100]")
+	
+	Vermilion:AddChatCommand("playsoundcloud", function(sender, text, log)
+		
+	end)
+	
+	Vermilion:AddChatCommand("stopsound", function(sender, text, log)
+		if(Vermilion:HasPermission(sender, "stopsound")) then
+			local target = VToolkit.GetValidPlayers(false)
+			local channel = "BaseSound"
+			
+			if(table.Count(text) >= 1) then
+				if(text[1] != "nil") then
+					target = VToolkit.LookupPlayer(text[1])
+					if(not IsValid(target)) then
+						log("No such player!", NOTIFY_ERROR)
+						return
+					end
+				end
+			end
+			
+			if(table.Count(text) >= 2) then
+				channel = text[2]
+			end
+			
+			MODULE:NetStart("VStop")
+			net.WriteString(channel)
+			net.Send(target)
+			
+			Vermilion:BroadcastNotification(sender:GetName() .. " stopped the sound in the " .. channel .. " channel.")
+		end
+	end, "[target:nil/name] [channel]")
+	
+	Vermilion:AddChatCommand("pausesound", function(sender, text, log)
+		if(Vermilion:HasPermission(sender, "pausesound")) then
+			local target = VToolkit.GetValidPlayers(false)
+			local channel = "BaseSound"
+			
+			if(table.Count(text) >= 1) then
+				if(text[1] != "nil") then
+					target = VToolkit.LookupPlayer(text[1])
+					if(not IsValid(target)) then
+						log("No such player!", NOTIFY_ERROR)
+						return
+					end
+				end
+			end
+			
+			if(table.Count(text) >= 2) then
+				channel = text[2]
+			end
+			
+			MODULE:NetStart("VPause")
+			net.WriteString(channel)
+			net.Send(target)
+			
+			Vermilion:BroadcastNotification(sender:GetName() .. " paused the sound in the " .. channel .. " channel.")
+		end
+	end, "[target:nil/name] [channel]")
+	
+	Vermilion:AddChatCommand("unpausesound", function(sender, text, log)
+		if(Vermilion:HasPermission(sender, "unpausesound")) then
+			local target = VToolkit.GetValidPlayers(false)
+			local channel = "BaseSound"
+			
+			if(table.Count(text) >= 1) then
+				if(text[1] != "nil") then
+					target = VToolkit.LookupPlayer(text[1])
+					if(not IsValid(target)) then
+						log("No such player!", NOTIFY_ERROR)
+						return
+					end
+				end
+			end
+			
+			if(table.Count(text) >= 2) then
+				channel = text[2]
+			end
+			
+			MODULE:NetStart("VUnpause")
+			net.WriteString(channel)
+			net.Send(target)
+			
+			Vermilion:BroadcastNotification(sender:GetName() .. " resumed the sound in the " .. channel .. " channel.")
+		end
+	end, "[target:nil/name] [channel]")
 end
 
 function MODULE:InitShared()
@@ -54,6 +251,30 @@ end
 
 function MODULE:InitServer()
 	
+	function MODULE:SendSound(vplayer, path, channel, parameters)
+		MODULE:NetStart("VPlaySound")
+		net.WriteString(path)
+		net.WriteString(channel)
+		net.WriteTable(parameters or {})
+		net.Send(vplayer)
+	end
+	
+	function MODULE:BroadcastSound(path, channel, parameters)
+		self:SendSound(VToolkit.GetValidPlayers(false), path, channel, parameters)
+	end
+	
+	function MODULE:SendStream(vplayer, url, channel, parameters)
+		MODULE:NetStart("VPlayStream")
+		net.WriteString(url)
+		net.WriteString(channel)
+		net.WriteTable(parameters or {})
+		net.Send(vplayer)
+	end
+	
+	function MODULE:BroadcastStream(url, channel, parameters)
+		self:SendStream(VToolkit.GetValidPlayers(false), url, channel, parameters)
+	end
+	
 end
 
 function MODULE:InitClient()
@@ -61,25 +282,157 @@ function MODULE:InitClient()
 	CreateClientConVar("vermilion_fft", 1, true, false)
 	CreateClientConVar("vermilion_fft_type", "Default", true, false)
 	
-	function MODULE:PlaySoundTest()
-		local path = "spin.mp3"
-		local index = "BaseSound"
-		local loop = false
-		local volume = 100 / 100
+	self:AddHook(Vermilion.Event.MOD_LOADED, function()
+		local mod = Vermilion:GetModule("client_settings")
+		if(mod == nil) then return end
+		mod:AddOption("vermilion_fft", "Enable Visualiser", "Checkbox", "Features")
+		mod:AddOption("vermilion_fft_type", "Visualiser Style", "Combobox", "Graphics", {
+			Options = table.GetKeys(MODULE.Visualisers),
+			SetAs = "text"
+		})
+	end)
 	
-		local typ = "noplay"
-		if(loop) then typ = typ .. " noblock" end
-		sound.PlayFile("sound/" .. path, typ, function(station, errorID)
-			if(IsValid(station)) then
-				station:EnableLooping(loop)
-				station:Play()
-				station:SetVolume(volume)
-				MODULE.Channels[index] = station
+	self:NetHook("VPlaySound", function()
+		local path = net.ReadString()
+		local channel = net.ReadString()
+		local parameters = net.ReadTable()
+		MODULE:QueueSoundFile(path, channel, parameters, function(data)
+			MODULE:PlayChannel(channel)
+		end)
+	end)
+	
+	self:NetHook("VPlayStream", function()
+		local url = net.ReadString()
+		local channel = net.ReadString()
+		local parameters = net.ReadTable()
+		MODULE:QueueSoundStream(url, channel, parameters, function(data)
+			MODULE:PlayChannel(channel)
+		end)
+	end)
+	
+	local function setChannel(name, data)
+		if(MODULE.Channels[name] != nil) then
+			if(IsValid(MODULE.Channels[name].AudioChannel)) then
+				MODULE.Channels[name].AudioChannel:Stop()
+			end
+		end
+		MODULE.Channels[name] = data
+	end
+	
+	function MODULE:GetChannel(name)
+		return self.Channels[name]
+	end
+	
+	local requiredFileParamters = {
+		{ Name = "Volume", Default = 1 },
+		{ Name = "Loop", Default = false }
+	}
+	
+	local requiredStreamParameters = {
+		{ Name = "Volume", Default = 1 },
+		{ Name = "Loop", Default = false }
+	}
+	
+	function MODULE:QueueSoundFile(path, channel, parameters, callback)
+		parameters = parameters or {}
+		
+		for i,k in pairs(requiredFileParamters) do
+			if(parameters[k.Name] == nil) then
+				parameters[k.Name] = k.Default
+			end
+		end
+		
+		local data = { Type = MODULE.TYPE_FILE, Path = path, Ready = false, AudioChannel = nil }
+		table.Merge(data, parameters)
+		setChannel(channel, data)
+		
+		local typ = ""
+		if(data.Loop) then
+			typ = "noblock"
+		end
+		
+		sound.PlayFile("sound/" .. data.Path, "noplay " .. typ, function(channel, errid, errnam)
+			if(IsValid(channel)) then
+				channel:EnableLooping(data.Loop)
+				channel:SetVolume(data.Volume)
+				data.AudioChannel = channel
+				data.Ready = true
+				if(isfunction(callback)) then callback(data) end
 			else
-				print(errs[tostring(errorID)])
+				Vermilion.Log(errnam)
 			end
 		end)
 	end
+	
+	function MODULE:QueueSoundStream(url, channel, parameters, callback)
+		parameters = parameters or {}
+		
+		for i,k in pairs(requiredFileParamters) do
+			if(parameters[k.Name] == nil) then
+				parameters[k.Name] = k.Default
+			end
+		end
+		
+		local data = { Type = MODULE.TYPE_STREAM, URL = url, Ready = false, AudioChannel = nil }
+		table.Merge(data, parameters)
+		setChannel(channel, data)
+		
+		local typ = ""
+		if(data.Loop) then
+			typ = "noblock"
+		end
+		
+		sound.PlayURL(data.URL, "noplay " .. typ, function(channel, errid, errnam)
+			if(IsValid(channel)) then
+				channel:EnableLooping(data.Loop)
+				channel:SetVolume(data.Volume)
+				data.AudioChannel = channel
+				data.Ready = true
+				if(isfunction(callback)) then callback(data) end
+			else
+				Vermilion.Log(errnam)
+			end
+		end)
+	end
+	
+	function MODULE:PlaySoundFile(path, channel, parameters)
+		self:QueueSoundFile(path, channel, parameters, function(data)
+			MODULE:PlayChannel(channel)
+		end)
+	end
+	
+	function MODULE:PlaySoundStream(url, channel, parameters)
+		self:QueueSoundStream(url, channel, parameters, function(data)
+			MODULE:PlayChannel(channel)
+		end)
+	end
+	
+	function MODULE:ValidateChannel(channel)
+		if(self:GetChannel(channel) == nil) then return false end
+		if(not self:GetChannel(channel).Ready) then return false end
+		if(not IsValid(self:GetChannel(channel).AudioChannel)) then return false end
+		
+		return true
+	end
+	
+	function MODULE:PlayChannel(channel)
+		if(not self:ValidateChannel(channel)) then return false end
+		self:GetChannel(channel).AudioChannel:Play()
+		return true
+	end
+	
+	function MODULE:PauseChannel(channel)
+		if(not self:ValidateChannel(channel)) then return false end
+		self:GetChannel(channel).AudioChannel:Pause()
+		return true
+	end
+	
+	function MODULE:StopChannel(channel)
+		if(not self:ValidateChannel(channel)) then return false end
+		self:GetChannel(channel).AudioChannel:Stop()
+		return true
+	end
+	
 	
 	self:RegisterVisualiser("Default", function(data, percent, xpos, ypos, width, spacing)
 		for i,k in pairs(data) do
@@ -120,7 +473,10 @@ function MODULE:InitClient()
 
 	self:AddHook("HUDShouldDraw", function(name)
 		if(name == "NetGraph") then
-			return not (IsValid(MODULE.Channels["BaseSound"]) and GetConVarNumber("vermilion_fft") == 1 and MODULE.Channels["BaseSound"]:GetState() != 0)
+			if(GetConVarNumber("vermilion_fft") != 1) then return end
+			if(not MODULE:ValidateChannel("BaseSound")) then return end
+			if(MODULE:GetChannel("BaseSound").AudioChannel:GetState() == 0) then return end
+			return false
 		end
 	end)
 	
@@ -137,9 +493,9 @@ function MODULE:InitClient()
 			MODULE.CreditW = maxw
 			MODULE.CreditH = pos
 		end
-		if(IsValid(MODULE.Channels["BaseSound"]) and GetConVarNumber("vermilion_fft") == 1 and MODULE.Channels["BaseSound"]:GetState() != 0) then
+		if(MODULE:ValidateChannel("BaseSound") and GetConVarNumber("vermilion_fft") == 1 and MODULE:GetChannel("BaseSound").AudioChannel:GetState() != 0) then
 			local tab = {}
-			local num = MODULE.Channels["BaseSound"]:FFT(tab, FFT_256)
+			local num = MODULE:GetChannel("BaseSound").AudioChannel:FFT(tab, FFT_256)
 			local width = 5
 			local spacing = 1
 			
@@ -147,7 +503,11 @@ function MODULE:InitClient()
 			local xpos = ScrW() - 10 - ((width + spacing) * num)
 			local totalLen = xpos
 			local ypos = ScrH() - 100
-			local percent = (MODULE.Channels["BaseSound"]:GetTime() / MODULE.Channels["BaseSound"]:GetLength()) * num -- get the progress through the track as a percentage of the number of channels.
+			local percent = (MODULE:GetChannel("BaseSound").AudioChannel:GetTime() / MODULE:GetChannel("BaseSound").AudioChannel:GetLength()) * num -- get the progress through the track as a percentage of the number of channels.
+			if(not isfunction(MODULE.Visualisers[GetConVarString("vermilion_fft_type")])) then
+				MODULE.Visualisers["Default"](tab, percent, xpos, ypos, width, spacing)
+				return
+			end
 			MODULE.Visualisers[GetConVarString("vermilion_fft_type")](tab, percent, xpos, ypos, width, spacing)
 		end
 	end)

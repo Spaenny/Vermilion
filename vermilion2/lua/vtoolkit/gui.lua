@@ -48,33 +48,39 @@ function PanelMeta:GetY()
 	return select(2, self:GetPos())
 end
 
-local function calcNotifyFormula(x, time)
-	assert(x >= 0 and time > 0)
-	local grMax = 1.763 * time
-	local grTime = 1 / time
-	local xClamp = math.Clamp(x, 0, grMax)
-	local result = ((math.pow((grTime * xClamp) - 1.11, 3) - 3 * math.pow((grTime * xClamp) - 1.11, 2)) + 5) / 4
-	return result, result >= grMax
+
+local function newNotifyFormula(x)
+	if(x < 0) then
+		return math.pow(2, 5 * x)
+	else
+		return 1 + ((10 * math.sin(2 * (x + 1) * math.pi)) / (math.exp(3 * (x + 1))))
+	end
 end
 
 VToolkit.NotificationAnim = Derma_Anim("VToolkit_SizeBounce", nil, function(panel, anim, delta, data)
-	-- formula = (((x - 1)^3 - 3(x - 1)^2) + 5) / 4 { 0 <= x <= 4.732 }
-	if((data.Done or data.Pos >= 1.763 * anim.Length) and not data.FinishedN) then
+	if((data.Done or data.Pos >= 2.1) and not data.FinishedN) then
 		panel:SetSize(panel.MaxW, panel.MaxH)
-		--panel:SetPos(panel.IntendedX - panel.MaxW, panel.IntendedY + panel.MaxH)
 		if(isfunction(data.Callback)) then data.Callback(panel, anim, data) end
 		data.FinishedN = true
 		return
 	elseif(data.FinishedN) then
 		return
 	end
-	data.Pos = data.Pos + delta
+	local change = 0
+	if(data.Pos < 0) then
+		change = delta / anim.Length
+	else
+		change = delta / (anim.Length * 4)
+	end
+	data.Pos = data.Pos + change
 	local pos = data.Pos
 	
-	local num,finished = calcNotifyFormula(pos, anim.Length)
+	local num,finished = newNotifyFormula(pos, anim.Length)
 	
 	panel:SetSize(panel.MaxW * num, panel.MaxH * num)
-	panel:SetPos((panel.IntendedX - (panel:GetWide() / 2)) - (panel.MaxW / 2), (panel.IntendedY + (panel:GetTall() / 2)) + ((panel.MaxH + 5) / 2))
+	local addition = 5
+	if(data.OnlyOne) then addition = 0 end
+	panel:SetPos(150 - (panel:GetWide() / 2) , panel.IntendedY - (panel:GetTall() / 2) + addition )
 	
 	if(finished) then data.Done = true end
 end)
@@ -568,10 +574,10 @@ function VToolkit:CreateSearchBox(listView, changelogic)
 	box:SetTall(25)
 	
 	listView.OldAddLine = listView.AddLine
-	function listView:AddLine(text)
-		local ln = self:OldAddLine(text)
+	function listView:AddLine(...)
+		local ln = self:OldAddLine(...)
 		for i1,k1 in pairs(listView.Columns) do
-			if(string.find(string.lower(ln:GetValue(i1)), string.lower(box:GetValue()))) then
+			if(string.find(string.lower(ln:GetValue(i1)), string.lower(box:GetValue()), 0, true)) then
 				ln:SetVisible(true)
 				break
 			else
@@ -594,7 +600,7 @@ function VToolkit:CreateSearchBox(listView, changelogic)
 			for i,k in pairs(listView:GetLines()) do
 				local visible = false
 				for i1,k1 in pairs(listView.Columns) do
-					if(string.find(string.lower(k:GetValue(i1)), string.lower(val))) then
+					if(string.find(string.lower(k:GetValue(i1)), string.lower(val), 0, true)) then
 						k:SetVisible(true)
 						visible = true
 						break

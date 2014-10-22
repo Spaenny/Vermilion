@@ -211,7 +211,7 @@ MENU:AddPage({
 -- stop drawing netgraph or the ammo count if the menu is open
 Vermilion:AddHook("HUDShouldDraw", "MenuClientHudDraw", false, function(name)
 	if(name == "NetGraph" or name == "CHudAmmo") then
-		return not MENU.IsOpen
+		if(MENU.IsOpen) then return false end
 	end
 end)
 

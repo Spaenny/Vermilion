@@ -145,8 +145,13 @@ function SoundCloud.Tracks:GetTrack(trackID, scallback, fcallback, r1)
 	SoundCloud:RunQuery("tracks/" .. trackID .. ".json?client_id=%%clientid%%", scallback, fcallback)
 end
 
+function SoundCloud.Tracks:GenerateStream(trackID)
+	return "https://api.soundcloud.com/tracks/" .. trackID .. "/stream?client_id=" .. SoundCloud.ClientID
+
+end
+
 function SoundCloud.Tracks:Search(query, scallback, fcallback)
-	SoundCloud:RunQuery("tracks?client_id=%%clientid%%&q=" .. SoundCloud.Utils.UrlEncode(query), scallback, fcallback)
+	SoundCloud:RunQuery("tracks.json?client_id=%%clientid%%&q=" .. SoundCloud.Utils.UrlEncode(query), scallback, fcallback)
 end
 
 function SoundCloud.Tracks:GetComments(trackID, scallback, fcallback, r1)
