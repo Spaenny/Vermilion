@@ -25,7 +25,6 @@ MODULE.Author = "Ned"
 MODULE.Permissions = {
 	"playsound",
 	"playstream",
-	"playsoundcloud",
 	"stopsound",
 	"pausesound",
 	"unpausesound"
@@ -33,10 +32,8 @@ MODULE.Permissions = {
 MODULE.NetworkStrings = {
 	"VQueueSound",
 	"VQueueStream",
-	"VQueueSoundCloud",
 	"VPlaySound",
 	"VPlayStream",
-	"VPlaySoundCloud",
 	"VStop",
 	"VPause",
 	"VUnpause"
@@ -44,7 +41,6 @@ MODULE.NetworkStrings = {
 
 MODULE.TYPE_FILE = -1
 MODULE.TYPE_STREAM = -2
-MODULE.TYPE_SOUNDCLOUD = -3
 
 MODULE.Channels = {}
 MODULE.Visualisers = {}
@@ -155,11 +151,7 @@ function MODULE:RegisterChatCommands()
 			Vermilion:BroadcastNotification(sender:GetName() .. " is playing a stream.")
 		end
 	end, "<url> [target:nil/name] [loop:true/false] [volume:0-100]")
-	
-	Vermilion:AddChatCommand("playsoundcloud", function(sender, text, log)
-		
-	end)
-	
+
 	Vermilion:AddChatCommand("stopsound", function(sender, text, log)
 		if(Vermilion:HasPermission(sender, "stopsound")) then
 			local target = VToolkit.GetValidPlayers(false)
@@ -245,8 +237,12 @@ end
 function MODULE:InitShared()
 	if(SERVER) then
 		AddCSLuaFile("vermilion2/modules/sound/soundcloud_bindings.lua")
+		AddCSLuaFile("vermilion2/modules/sound/soundcloud.lua")
+		AddCSLuaFile("vermilion2/modules/sound/sound_browser.lua")
 	end
 	include("vermilion2/modules/sound/soundcloud_bindings.lua")
+	include("vermilion2/modules/sound/soundcloud.lua")
+	include("vermilion2/modules/sound/sound_browser.lua")
 end
 
 function MODULE:InitServer()
@@ -275,6 +271,26 @@ function MODULE:InitServer()
 		self:SendStream(VToolkit.GetValidPlayers(false), url, channel, parameters)
 	end
 	
+	self:NetHook("VPlaySound", function(vplayer)
+		if(Vermilion:HasPermission(vplayer, "playsound")) then
+			local path = net.ReadString()
+			local channel = net.ReadString()
+			local parameters = net.ReadTable()
+			
+			MODULE:BroadcastSound(path, channel, parameters)
+		end
+	end)
+	
+	self:NetHook("VPlayStream", function(vplayer)
+		if(Vermilion:HasPermission(vplayer, "playstream")) then
+			local url = net.ReadString()
+			local channel = net.ReadString()
+			local parameters = net.ReadTable()
+			
+			MODULE:BroadcastStream(url, channel, parameters)
+		end
+	end)
+	
 end
 
 function MODULE:InitClient()
@@ -283,6 +299,9 @@ function MODULE:InitClient()
 	CreateClientConVar("vermilion_fft_type", "Default", true, false)
 	
 	self:AddHook(Vermilion.Event.MOD_LOADED, function()
+		if(MODULE.Visualisers[GetConVarString("vermilion_fft_type")] == nil) then
+			RunConsoleCommand("vermilion_fft_type", "Default")
+		end
 		local mod = Vermilion:GetModule("client_settings")
 		if(mod == nil) then return end
 		mod:AddOption("vermilion_fft", "Enable Visualiser", "Checkbox", "Features")
@@ -470,6 +489,58 @@ function MODULE:InitClient()
 			xpos = xpos + width + spacing
 		end
 	end)
+	
+	--[[ local visualiserFunction = nil
+	local devData = nil
+	
+	self:RegisterVisualiser("Development", function(data, percent, xpos, ypos, width, spacing)
+		if(visualiserFunction == nil) then return end
+		VDATA = data
+		VPERCENT = percent
+		VXPOS = xpos
+		VYPOS = ypos
+		VWIDTH = width
+		VSPACING = spacing
+		visualiserFunction()
+	end)
+	
+	concommand.Add("vermilion_visualiserbuilder", function()
+		local panel = VToolkit:CreateFrame({
+			size = { 600, 600 },
+			pos = { (ScrW() - 600) / 2, (ScrH() - 650) / 2 },
+			title = "Vermilion Visualiser Editor",
+			closeBtn = true
+		})
+		
+		local code = VToolkit:CreateTextbox()
+		code:SetPos(0, 30)
+		code:SetSize(600, 500)
+		code:SetParent(panel)
+		code:SetMultiline(true)
+		code:SetUpdateOnType(true)
+		code:SetTabbingDisabled(true)
+		
+		function code:OnChange(val)
+			devData = val
+		end
+		
+		function 
+		
+		if(devData != nil) then
+			code:SetValue(devData)
+		end
+		
+		local compileBtn = VToolkit:CreateButton("Compile Code", function()
+			visualiserFunction = CompileString(code:GetValue(), "Vermilion_VisualiserDev")
+		end)
+		compileBtn:SetPos(490, 570)
+		compileBtn:SetSize(100, 20)
+		compileBtn:SetParent(panel)
+		
+		panel:MakePopup()
+		panel:DoModal()
+		panel:SetAutoDelete(true)
+	end) ]]
 
 	self:AddHook("HUDShouldDraw", function(name)
 		if(name == "NetGraph") then

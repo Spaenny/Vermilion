@@ -59,8 +59,11 @@ function SoundCloud:RunQuery(url, scallback, fcallback)
 		end
 		local data = util.JSONToTable(body)
 		if(data == nil) then
-			print(body)
 			if(fcallback != nil) then fcallback("No valid data returned.") end
+			return
+		end
+		if(table.Count(data) == 0) then
+			if(fcallback != nil) then fcallback("Nothing found") end
 			return
 		end
 		if(scallback != nil) then scallback(data) end

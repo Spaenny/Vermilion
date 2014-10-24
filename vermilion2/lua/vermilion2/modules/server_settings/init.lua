@@ -532,6 +532,8 @@ function MODULE:InitClient()
 					
 					local combobox = VToolkit:CreateComboBox()
 					combobox:SetPos(MODULE.SettingsList:GetWide() - 230, 3)
+					combobox:Dock(RIGHT)
+					combobox:DockMargin(0, 2, 5, 2)
 					combobox:SetParent(panel)
 					for i1,k1 in pairs(k.Options) do
 						combobox:AddChoice(k1)

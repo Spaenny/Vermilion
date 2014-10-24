@@ -356,6 +356,35 @@ else
 end
 
 
+
+
+--[[
+
+	//		Duplicator Hacks		\\
+
+]]--
+if(SERVER) then
+	local oldDupePaste = duplicator.Paste
+
+	function duplicator.Paste(vplayer, entlist, constraints)
+		local entlist2 = {}
+		local count = 0
+		for i,k in pairs(entlist) do
+			if(hook.Run("Vermilion_IsEntityDuplicatable", vplayer, k.Class, k.Model) != false) then
+				entlist2[i] = k
+			else
+				count = count + 1
+			end
+		end
+		
+		if(count > 0) then Vermilion:AddNotify(vplayer, "Removed " .. tostring(count) .. " banned entities from this duplication.", NOTIFY_ERROR) end
+		
+		return oldDupePaste(vplayer, entlist2, constraints)
+	end
+end
+
+
+
 --[[
 
 	//		Notifications		\\
@@ -487,6 +516,7 @@ if(CLIENT) then
 		local animData = {
 			Pos = -1,
 			OnlyOne = table.Count(notifybg:GetChildren()) == 1,
+			NotifyPanel = notifybg,
 			Callback = function()
 				finished = true
 				timer.Simple(time or 10, function()

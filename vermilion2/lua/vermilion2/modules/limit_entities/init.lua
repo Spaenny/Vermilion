@@ -35,7 +35,13 @@ function MODULE:InitServer()
 	
 	self:AddHook("PlayerSpawnSENT", function(vplayer, class)
 		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), class)) then
-			Vermilion:AddNotification(vplayer, "You cannot spawn this SENT!", NOTIFY_ERROR)
+			Vermilion:AddNotification(vplayer, "You cannot spawn this entity!", NOTIFY_ERROR)
+			return false
+		end
+	end)
+	
+	self:AddHook("Vermilion_IsEntityDuplicatable", function(vplayer, class)
+		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), class)) then
 			return false
 		end
 	end)

@@ -35,13 +35,25 @@ function MODULE:InitServer()
 
 	self:AddHook("PlayerGiveSWEP", function(vplayer, weapon, swep)
 		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), weapon)) then
-			Vermilion:AddNotification(vplayer, "You cannot spawn this SWEP!", NOTIFY_ERROR)
+			Vermilion:AddNotification(vplayer, "You cannot spawn this weapon!", NOTIFY_ERROR)
 			return false
 		end
 	end)
 	
 	self:AddHook("PlayerCanPickupWeapon", function(vplayer, weapon)
 		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), weapon:GetClass())) then
+			return false
+		end
+	end)
+	
+	self:AddHook("Vermilion_IsEntityDuplicatable", function(vplayer, class)
+		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), class)) then
+			return false
+		end
+	end)
+	
+	self:AddHook("PlayerSpawnSENT", function(vplayer, class)
+		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), class)) then
 			return false
 		end
 	end)

@@ -41,6 +41,12 @@ function MODULE:InitServer()
 		end
 	end)
 	
+	self:AddHook("Vermilion_IsEntityDuplicatable", function(vplayer, class)
+		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), class)) then
+			return false
+		end
+	end)
+	
 	
 	
 	self:NetHook("VGetNPCLimits", function(vplayer)

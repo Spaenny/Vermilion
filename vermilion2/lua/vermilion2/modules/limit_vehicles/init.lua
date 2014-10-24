@@ -41,6 +41,12 @@ function MODULE:InitServer()
 		end
 	end)
 	
+	self:AddHook("Vermilion_IsEntityDuplicatable", function(vplayer, class, model)
+		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), model)) then
+			return false
+		end
+	end)
+	
 	
 	
 	self:NetHook("VGetVehicleLimits", function(vplayer)

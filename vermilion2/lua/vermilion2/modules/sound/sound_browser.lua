@@ -1,5 +1,5 @@
 --[[
- Copyright 2014 Ned Hyett
+ Copyright 2014 Ned Hyett, 
 
  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  in compliance with the License. You may obtain a copy of the License at
@@ -17,41 +17,32 @@
  in any way, nor claims to be so. 
 ]]
 
-local lang = Vermilion:CreateLangBody("English")
+local MODULE = Vermilion:GetModule("sound")
 
-lang:Add("no_users", "No such player exists on the server.")
-lang:Add("ambiguous_users", "Ambiguous results for search \"%s\". (Matched %s users).")
-lang:Add("access_denied", "Access Denied!")
-lang:Add("under_construction", "Under Construction!")
-
-
---[[
-
-	//		Prints:Settings		\\
-
-]]--
-
-
---[[
-
-	//		Categories		\\
-
-]]--
-
-lang:Add("category:basic", "Basics")
-lang:Add("category:server", "Server Settings")
-lang:Add("category:ranks", "Ranks")
-lang:Add("category:player", "Player Management")
-lang:Add("category:limits", "Limits")
-
-
---[[
-
-	//		Toolgun Limiter
-
-]]--
-
-lang:Add("limit_toolgun:cannot_use", "You cannot use this toolgun mode!")
-
-
-Vermilion:RegisterLanguage(lang)
+if(CLIENT) then
+	
+	function MODULE:BuildSoundSearchPanel()
+		local panel = vgui.Create("DPanel")
+		panel:SetSize(600, 400)
+		
+		return panel
+	end
+	
+	function MODULE:SearchTest()
+		local panel = VToolkit:CreateFrame({
+			size = { 600, 600 },
+			pos = { (ScrW() - 600) / 2, (ScrH() - 600) / 2 },
+			title = ""
+		})
+		
+		local viewPanel = self:BuildSoundSearchPanel()
+		viewPanel:SetParent(panel)
+		
+		viewPanel:SetPos(0, 30)
+		
+		panel:MakePopup()
+		panel:DoModal()
+		panel:SetAutoDelete(true)
+	end
+	
+end

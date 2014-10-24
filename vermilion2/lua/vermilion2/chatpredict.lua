@@ -177,12 +177,19 @@ else
 			if(Vermilion:GetModule("chatbox") != nil and GetConVarNumber("vermilion_replace_chat") == 1) then
 				text = "Press up/down to select a suggestion and press right arrow key to insert it."
 			end
-			local mapbx = math.Remap(545, 0, 1366, 0, ScrW())
-			local maptx = math.Remap(550, 0, 1366, 0, ScrW())
+			local mapbx = nil
+			local maptx = nil
+			if(chat.GetChatBoxSize == nil) then
+				mapbx = math.Remap(545, 0, 1366, 0, ScrW())
+				maptx = math.Remap(550, 0, 1366, 0, ScrW())
 
-			if(ScrW() > 1390) then
-				mapbx = mapbx + 100
-				maptx = maptx + 100
+				if(ScrW() > 1390) then
+					mapbx = mapbx + 100
+					maptx = maptx + 100
+				end
+			else
+				mapbx = select(1, chat.GetChatBoxSize()) + 10
+				mapbx = select(1, chat.GetChatBoxSize()) + 15
 			end
 			draw.RoundedBox(2, mapbx, select(2, chat.GetChatBoxPos()) - 15, Vermilion.ChatBGW + 10, Vermilion.ChatBGH + 5, Color(0, 0, 0, 128))
 			draw.SimpleText(text, "Default", maptx, select(2, chat.GetChatBoxPos()) - 20, Color(255, 255, 255), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)

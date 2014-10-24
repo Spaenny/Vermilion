@@ -73,11 +73,17 @@ Skin.Textbox.Config = function(textbox)
 end
 
 Skin.Textbox.Paint = function( self, w, h )
-	self:OldPaint( self, w, h )
 	surface.SetDrawColor( 255, 255, 255, 255 )
 	surface.DrawRect( 0, 0, w, h )
 	surface.SetDrawColor( 255, 0, 0, 255 )
 	surface.DrawOutlinedRect( 0, 0, w, h )
+	if(self.PlaceholderText != nil and (self:GetValue() == nil or self:GetValue() == "")) then
+		surface.SetTextColor(0, 0, 0, 128)
+		surface.SetFont(self.m_FontName)
+		surface.SetTextPos(2, self:GetTall() / 2 - (select(2, surface.GetTextSize(self.PlaceholderText)) / 2))
+		surface.DrawText(self.PlaceholderText)
+	end
+	self:DrawTextEntryText( self.m_colText, self.m_colHighlight, self.m_colCursor )
 end
 
 
@@ -87,6 +93,17 @@ Skin.Frame.Config = function(frame)
 end
 
 Skin.Frame.Paint = function( self, w, h ) 
+	-- body
+	surface.SetDrawColor( 100, 0, 0, 200 )
+	surface.DrawRect( 0, 0, w, h )
+	-- frame
+	surface.SetDrawColor( 255, 0, 0, 200 )
+	surface.DrawOutlinedRect( 0, 0, w, h )
+end
+
+
+Skin.WindowPanel = {}
+Skin.WindowPanel.Paint = function(self, w, h)
 	-- body
 	surface.SetDrawColor( 100, 0, 0, 200 )
 	surface.DrawRect( 0, 0, w, h )

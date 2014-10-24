@@ -58,7 +58,7 @@ local function newNotifyFormula(x)
 end
 
 VToolkit.NotificationAnim = Derma_Anim("VToolkit_SizeBounce", nil, function(panel, anim, delta, data)
-	if((data.Done or data.Pos >= 2.1) and not data.FinishedN) then
+	if((data.Done or data.Pos >= 2.1) and not data.FinishedN or anim.Finished) then
 		panel:SetSize(panel.MaxW, panel.MaxH)
 		if(isfunction(data.Callback)) then data.Callback(panel, anim, data) end
 		data.FinishedN = true
@@ -172,7 +172,7 @@ function VToolkit:CreateCheckBox(text, convar, initialValue)
 	if(convar == nil) then
 		checkbox:SetText(text)
 		checkbox:SizeToContents()
-		checkbox:SetDark(Crimson.Dark)
+		checkbox:SetDark(self.Dark)
 	else
 		if(initialValue == nil) then
 			initialValue = GetConVarNumber(convar)
@@ -181,7 +181,7 @@ function VToolkit:CreateCheckBox(text, convar, initialValue)
 		checkbox:SetConVar(convar)
 		checkbox:SetValue(initialValue)
 		checkbox:SizeToContents()
-		checkbox:SetDark(Crimson.Dark)
+		checkbox:SetDark(self.Dark)
 	end
 	if(self:GetSkinComponent("Checkbox") != nil) then
 		if(self:GetSkinComponent("Checkbox").Config != nil) then
@@ -295,25 +295,12 @@ function VToolkit:CreateSlider(text, min, max, decimals, convar)
 	return slider
 end
 
-function VToolkit:CreateTextbox(text, panel, convar)
+function VToolkit:CreateTextbox(text)
 	text = text or ""
 	local textbox = vgui.Create("DTextEntry")
-	if(panel == nil) then
-		panel = {}
-		function panel:GetWide()
-			return 0
-		end
-	end
-	if(convar == nil) then
-		textbox:SetSize(panel:GetWide(), 35)
-		textbox:SetText(text)
-		return textbox
-	else
-		textbox:SetSize( panel:GetWide(), 35 )
-		textbox:SetText( text )
-		textbox.OnEnter = function( self )
-			RunConsoleCommand(convar, self:GetValue())
-		end
+	textbox.PlaceholderText = nil
+	function textbox:SetPlaceholderText(text)
+		self.PlaceholderText = text
 	end
 	textbox.OldPaint = textbox.Paint
 	if(self:GetSkinComponent("Textbox") != nil) then
@@ -326,6 +313,26 @@ function VToolkit:CreateTextbox(text, panel, convar)
 		end
 	end
 	return textbox
+end
+
+function VToolkit:CreatePanel(props)
+	local panel = vgui.Create("DPanel")
+	if(props['size'] != nil) then
+		panel:SetSize(props['size'][1], props['size'][2])
+	end
+	if(props['pos'] != nil) then
+		panel:SetPos(props['pos'][1], props['pos'][2])
+	end
+	if(self:GetSkinComponent("WindowPanel") != nil) then
+		if(self:GetSkinComponent("WindowPanel").Config != nil) then
+			self:GetSkinComponent("WindowPanel").Config(panel)
+		end
+		panel.OldPaint = panel.Paint
+		if(self:GetSkinComponent("WindowPanel").Paint != nil) then
+			panel.Paint = self:GetSkinComponent("WindowPanel").Paint
+		end
+	end
+	return panel
 end
 
 function VToolkit:CreateFrame(props)
