@@ -38,9 +38,9 @@ Skin.Checkbox.Config = function(checkbox)
 end
 
 Skin.Checkbox.Paint = function(self, w, h)
-	surface.SetDrawColor( 255, 255, 255, 255 )
+	surface.SetDrawColor( 255, 255, 255, self:GetAlpha() )
 	surface.DrawRect( 0, 0, w, h )
-	surface.SetDrawColor( 255, 0, 0, 255 )
+	surface.SetDrawColor( 255, 0, 0, self:GetAlpha() )
 	surface.DrawOutlinedRect( 0, 0, w, h )
 	surface.SetMaterial( Skin.CheckboxCross )
 	if self:GetChecked() then
@@ -48,20 +48,26 @@ Skin.Checkbox.Paint = function(self, w, h)
 	end
 end
 
+Skin.NumberWang = {}
+Skin.NumberWang.Paint = function(self, w, h)
+	self:OldPaint(w, h)
+	surface.SetDrawColor( 255, 0, 0, self:GetAlpha() )
+	surface.DrawOutlinedRect( 0, 0, w, h )
+end
+
 
 Skin.Button = {}
 Skin.Button.Config = function(button)
 	button:SetColor(Color(0, 0, 0, 255))
-	button:SetFont("VermilionButton")
+	button:SetFont("VToolkitButton")
 end
 
-Skin.Button.Paint = function(self)
-	local w, h = self:GetWide(), self:GetTall()
+Skin.Button.Paint = function(self, w, h)
 	-- body
-	surface.SetDrawColor( 255, 240, 240, 255 )
+	surface.SetDrawColor( 255, 240, 240, self:GetAlpha() )
 	surface.DrawRect( 0, 0, w, h )
 	-- frame
-	surface.SetDrawColor( 255, 0, 0, 255 )
+	surface.SetDrawColor( 255, 0, 0, self:GetAlpha() )
 	surface.DrawOutlinedRect( 0, 0, w, h )
 end
 
@@ -73,9 +79,9 @@ Skin.Textbox.Config = function(textbox)
 end
 
 Skin.Textbox.Paint = function( self, w, h )
-	surface.SetDrawColor( 255, 255, 255, 255 )
+	surface.SetDrawColor( 255, 255, 255, self:GetAlpha() )
 	surface.DrawRect( 0, 0, w, h )
-	surface.SetDrawColor( 255, 0, 0, 255 )
+	surface.SetDrawColor( 255, 0, 0, self:GetAlpha() )
 	surface.DrawOutlinedRect( 0, 0, w, h )
 	if(self.PlaceholderText != nil and (self:GetValue() == nil or self:GetValue() == "")) then
 		surface.SetTextColor(0, 0, 0, 128)
@@ -94,10 +100,10 @@ end
 
 Skin.Frame.Paint = function( self, w, h ) 
 	-- body
-	surface.SetDrawColor( 100, 0, 0, 200 )
+	surface.SetDrawColor( 100, 0, 0, math.Remap(self:GetAlpha(), 0, 255, 0, 200) )
 	surface.DrawRect( 0, 0, w, h )
 	-- frame
-	surface.SetDrawColor( 255, 0, 0, 200 )
+	surface.SetDrawColor( 255, 0, 0, math.Remap(self:GetAlpha(), 0, 255, 0, 200) )
 	surface.DrawOutlinedRect( 0, 0, w, h )
 end
 
@@ -105,10 +111,10 @@ end
 Skin.WindowPanel = {}
 Skin.WindowPanel.Paint = function(self, w, h)
 	-- body
-	surface.SetDrawColor( 100, 0, 0, 200 )
+	surface.SetDrawColor( 100, 0, 0, math.Remap(self:GetAlpha(), 0, 255, 0, 200) )
 	surface.DrawRect( 0, 0, w, h )
 	-- frame
-	surface.SetDrawColor( 255, 0, 0, 200 )
+	surface.SetDrawColor( 255, 0, 0, math.Remap(self:GetAlpha(), 0, 255, 0, 200) )
 	surface.DrawOutlinedRect( 0, 0, w, h )
 end
 
@@ -116,17 +122,24 @@ end
 Skin.PropertySheet = {}
 Skin.PropertySheet.Paint = function(self, w, h)
 	-- body
-	surface.SetDrawColor( 100, 0, 0, 200 )
+	surface.SetDrawColor( 100, 0, 0, math.Remap(self:GetAlpha(), 0, 255, 0, 200) )
 	surface.DrawRect( 0, 0, w, h )
 	-- frame
-	surface.SetDrawColor( 255, 0, 0, 200 )
+	surface.SetDrawColor( 255, 0, 0, math.Remap(self:GetAlpha(), 0, 255, 0, 200) )
 	surface.DrawOutlinedRect( 0, 0, w, h )
 end
 
 Skin.CollapsibleCateogryHeader = {}
 Skin.CollapsibleCateogryHeader.Paint = function(self, w, h)
-	surface.SetDrawColor(Color(255, 0, 0))
+	surface.SetDrawColor(255, 0, 0, self:GetAlpha())
 	surface.DrawRect(0, 0, w, 20)
+end
+
+Skin.ListView = {}
+Skin.ListView.Paint = function(self, w, h)
+	self:OldPaint(w, h)
+	surface.SetDrawColor( 255, 0, 0, self:GetAlpha() )
+	surface.DrawOutlinedRect( 0, 0, w, h )
 end
 
 VToolkit:RegisterSkin("Basic", Skin)

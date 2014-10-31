@@ -50,10 +50,24 @@ function MODULE:RegisterVisualiser(name, drawFunc)
 end
 
 function MODULE:RegisterChatCommands()
-	Vermilion:AddChatCommand("playsound", function(sender, text, log)
-		if(Vermilion:HasPermission(sender, "playsound")) then
+	Vermilion:AddChatCommand({
+		Name = "playsound",
+		Description = "Plays a sound to a player.",
+		Syntax = "<path> [target:nil/name] [loop:true/false] [volume:0-100]",
+		CanMute = true,
+		Permissions = { "playsound" },
+		Predictor = function(pos, current, all, vplayer)
+			if(pos == 1) then
+				
+			elseif(pos == 2) then
+				return VToolkit.MatchPlayerPart(VToolkit.GetValidPlayers(), current)
+			elseif(pos == 3) then
+				return VToolkit.MatchStringPart({"true", "false"}, current)
+			end
+		end,
+		Function = function(sender, text, log, glog)
 			local path = nil
-			local target = VToolkit.GetValidPlayers(false)
+			local target = VToolkit.GetValidPlayers(false) -- don't include bots; they can't hear.
 			local loop = false
 			local volume = 100
 			
@@ -97,12 +111,26 @@ function MODULE:RegisterChatCommands()
 			end
 			
 			MODULE:SendSound(target, path, "BaseSound", { Volume = volume, Loop = loop })
-			Vermilion:BroadcastNotification(sender:GetName() .. " is playing a sound.")
+			glog(sender:GetName() .. " is playing a sound.")
 		end
-	end, "<path> [target:nil/name] [loop:true/false] [volume:0-100]")
+	})
 	
-	Vermilion:AddChatCommand("playstream", function(sender, text, log)
-		if(Vermilion:HasPermission(sender, "playsound")) then
+	Vermilion:AddChatCommand({
+		Name = "playstream",
+		Description = "Plays a stream to a player.",
+		Syntax = "<url> [target:nil/name] [loop:true/false] [volume:0-100]",
+		CanMute = true,
+		Permissions = { "playsound" },
+		Predictor = function(pos, current, all, vplayer)
+			if(pos == 1) then
+				
+			elseif(pos == 2) then
+				return VToolkit.MatchPlayerPart(current)
+			elseif(pos == 3) then
+				return VToolkit.MatchStringPart({"true", "false"}, current)
+			end
+		end,
+		Function = function(sender, text, log, glog)
 			local url = nil
 			local target = VToolkit.GetValidPlayers(false)
 			local loop = false
@@ -148,12 +176,22 @@ function MODULE:RegisterChatCommands()
 			end
 			
 			MODULE:SendStream(target, url, "BaseSound", { Volume = volume, Loop = loop })
-			Vermilion:BroadcastNotification(sender:GetName() .. " is playing a stream.")
+			glog(sender:GetName() .. " is playing a stream.")
 		end
-	end, "<url> [target:nil/name] [loop:true/false] [volume:0-100]")
-
-	Vermilion:AddChatCommand("stopsound", function(sender, text, log)
-		if(Vermilion:HasPermission(sender, "stopsound")) then
+	})
+	
+	Vermilion:AddChatCommand({
+		Name = "stopsound",
+		Description = "Stops a sound.",
+		Syntax = "[target:nil/name] [channel]",
+		CanMute = true,
+		Permissions = { "stopsound" },
+		Predictor = function(pos, current, all, vplayer)
+			if(pos == 1) then
+				return VToolkit.MatchPlayerPart(current)
+			end
+		end,
+		Function = function(sender, text, log, glog)
 			local target = VToolkit.GetValidPlayers(false)
 			local channel = "BaseSound"
 			
@@ -175,12 +213,22 @@ function MODULE:RegisterChatCommands()
 			net.WriteString(channel)
 			net.Send(target)
 			
-			Vermilion:BroadcastNotification(sender:GetName() .. " stopped the sound in the " .. channel .. " channel.")
+			glog(sender:GetName() .. " stopped the sound in the " .. channel .. " channel.")
 		end
-	end, "[target:nil/name] [channel]")
+	})
 	
-	Vermilion:AddChatCommand("pausesound", function(sender, text, log)
-		if(Vermilion:HasPermission(sender, "pausesound")) then
+	Vermilion:AddChatCommand({
+		Name = "pausesound",
+		Description = "Pauses a sound",
+		Syntax = "[target:nil/name] [channel]",
+		CanMute = true,
+		Permissions = { "pausesound" },
+		Predictor = function(pos, current, all, vplayer)
+			if(pos == 1) then
+				return VToolkit.MatchPlayerPart(current)
+			end
+		end,
+		Function = function(sender, text, log, glog)
 			local target = VToolkit.GetValidPlayers(false)
 			local channel = "BaseSound"
 			
@@ -202,17 +250,27 @@ function MODULE:RegisterChatCommands()
 			net.WriteString(channel)
 			net.Send(target)
 			
-			Vermilion:BroadcastNotification(sender:GetName() .. " paused the sound in the " .. channel .. " channel.")
+			glog(sender:GetName() .. " paused the sound in the " .. channel .. " channel.")
 		end
-	end, "[target:nil/name] [channel]")
+	})
 	
-	Vermilion:AddChatCommand("unpausesound", function(sender, text, log)
-		if(Vermilion:HasPermission(sender, "unpausesound")) then
+	Vermilion:AddChatCommand({
+		Name = "unpausesound",
+		Description = "Resumes playing a paused sound",
+		Syntax = "[target:nil/name] [channel]",
+		CanMute = true,
+		Permissions = { "unpausesound" },
+		Predictor = function(pos, current, all, vplayer)
+			if(pos == 1) then
+				return VToolkit.MatchPlayerPart(current)
+			end
+		end,
+		Function = function(sender, text, log)
 			local target = VToolkit.GetValidPlayers(false)
 			local channel = "BaseSound"
 			
 			if(table.Count(text) >= 1) then
-				if(text[1] != "nil") then
+				if(text[1] != "nil" and text[1] != "@") then
 					target = VToolkit.LookupPlayer(text[1])
 					if(not IsValid(target)) then
 						log("No such player!", NOTIFY_ERROR)
@@ -229,9 +287,10 @@ function MODULE:RegisterChatCommands()
 			net.WriteString(channel)
 			net.Send(target)
 			
-			Vermilion:BroadcastNotification(sender:GetName() .. " resumed the sound in the " .. channel .. " channel.")
+			glog(sender:GetName() .. " resumed the sound in the " .. channel .. " channel.")
 		end
-	end, "[target:nil/name] [channel]")
+	})
+	
 end
 
 function MODULE:InitShared()
@@ -327,6 +386,11 @@ function MODULE:InitClient()
 		MODULE:QueueSoundStream(url, channel, parameters, function(data)
 			MODULE:PlayChannel(channel)
 		end)
+	end)
+	
+	self:NetHook("VStop", function()
+		local channel = net.ReadString()
+		MODULE:StopChannel(channel)
 	end)
 	
 	local function setChannel(name, data)

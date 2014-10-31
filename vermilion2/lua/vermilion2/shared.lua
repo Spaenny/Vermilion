@@ -20,6 +20,12 @@
 Vermilion.Languages = {}
 Vermilion.Modules = {}
 
+Vermilion.CoreAddon = {
+	APIFuncs = {
+		
+	}
+}
+
 --[[
 
 	//		Languages		\\
@@ -288,6 +294,15 @@ function Vermilion:CreateBaseModule()
 			net.Start(self.ID .. ":" .. msg)
 		end
 		
+		function base:NetCommand(msg, target)
+			net.Start(self.ID .. ":" .. msg)
+			if(SERVER) then
+				net.Send(target)
+			else
+				net.SendToServer()
+			end
+		end
+		
 		
 		function base:DistributeEvent(event, parameters) end
 		
@@ -311,10 +326,20 @@ function Vermilion:CreateBaseModule()
 end
 
 function Vermilion:RegisterModule(mod)
-	Vermilion.Modules[mod.ID] = mod
+	self.Modules[mod.ID] = mod
 	if(SERVER) then
 		for i,k in pairs(mod.Permissions) do
 			table.insert(self.AllPermissions, { Permission = k, Owner = mod.ID })
+		end
+		if(self.FirstRun and mod.DefaultPermissions != nil) then
+			for i,k in pairs(mod.DefaultPermissions) do
+				local rank = Vermilion:GetRank(k.Name)
+				if(rank != nil) then
+					for i1,k1 in pairs(k.Permissions) do
+						rank:AddPermission(k1)
+					end
+				end
+			end
 		end
 		if(mod.NetworkStrings != nil) then
 			for i,k in pairs(mod.NetworkStrings) do
@@ -391,6 +416,12 @@ end
 
 ]]--
 
+--[[
+	GENERIC = Blue ("Exclamation")
+	ERROR = Red ("Error Triangle")
+	HINT = Green ("Help Orb")
+]]--
+
 if(CLIENT) then
 	local notifications = {}
 	
@@ -424,15 +455,34 @@ if(CLIENT) then
 		surface.DrawLine( x + w, y + h, x + w / 2, y )
 		surface.DrawLine( x + w, y + h, x, y + h )
 		surface.SetFont( 'DermaDefaultBold' )
-		surface.SetTextPos( x + w / 2, y + h / 3 )
+		if(system.IsOSX()) then
+			surface.SetTextPos( (x + w / 2) - 2.75, y + h / 3 )
+		else
+			surface.SetTextPos( (x + w / 2) - 0.25, y + h / 3 )
+		end
 		surface.DrawText( '!' )
 	end
 
 	local function DrawNoteSign( x, y, w, h )
 		surface.SetTextColor( 100, 150, 255, 255 * math.Clamp( math.sin( CurTime() * 4 ), 0.5, 1 ) )
 		surface.SetFont( 'DermaLarge' )
-		surface.SetTextPos( x + w / 2 - surface.GetTextSize( '!' ) / 2, y )
+		if(system.IsOSX()) then
+			surface.SetTextPos( x + w / 2 - surface.GetTextSize( '!' ) / 2, y - 2)
+		else
+			surface.SetTextPos( x + w / 2 - surface.GetTextSize( '!' ) / 2, y )
+		end
 		surface.DrawText( '!' )
+	end
+	
+	local function DrawHintSign(x, y, w, h)
+		surface.SetTextColor( 50, 255, 50, 255 * math.Clamp(math.sin(CurTime() * 4), 0.5, 1))
+		surface.SetFont('DermaLarge')
+		if(system.IsOSX()) then
+			surface.SetTextPos( x + w / 2 - surface.GetTextSize( '?' ) / 2, y - 2 )
+		else
+			surface.SetTextPos( x + w / 2 - surface.GetTextSize( '?' ) / 2, y )
+		end
+		surface.DrawText("?")
 	end
 
 	local function breakNotification(text, max)
@@ -460,7 +510,7 @@ if(CLIENT) then
 	local function buildNotify(text, typ)
 		local notify = vgui.Create("DPanel")
 		notify:DockMargin(0, 0, 0, 5)
-		notify:Dock(TOP)
+		
 		surface.SetFont('DermaDefaultBold')
 		local size = select(2, surface.GetTextSize("Vermilion")) + 3
 		surface.SetFont("DermaDefault")
@@ -479,8 +529,9 @@ if(CLIENT) then
 			surface.SetDrawColor( 5, 5, 5, 220 )
 			surface.DrawRect( 0, 0, w, h )
 			local iconsize = h - 10
-			if self.TYPE == NOTIFY_ERROR then DrawErrorSign( w - 30, 5, 20, 20 ) surface.SetDrawColor( Vermilion.Colours.Red ) surface.SetTextColor( Vermilion.Colours.Red ) end
-			if self.TYPE == NOTIFY_GENERIC or self.TYPE == NOTIFY_HINT then DrawNoteSign( w - 30, 2, 20, 20 ) surface.SetDrawColor( 100, 150, 255, 255 ) surface.SetTextColor( 100, 150, 255, 255 ) end
+			if(self.TYPE == NOTIFY_ERROR) then DrawErrorSign( w - 30, 5, 20, 20 ) surface.SetDrawColor( Vermilion.Colours.Red ) surface.SetTextColor( Vermilion.Colours.Red ) end
+			if(self.TYPE == NOTIFY_GENERIC) then DrawNoteSign( w - 30, 2, 20, 20 ) surface.SetDrawColor( 100, 150, 255, 255 ) surface.SetTextColor( 100, 150, 255, 255 ) end
+			if(self.TYPE == NOTIFY_HINT) then DrawHintSign( w - 30, 2, 20, 20 ) surface.SetDrawColor( 50, 255, 50, 255) surface.SetTextColor( 50, 255, 50, 255) end
 			surface.DrawOutlinedRect( 0, 0, w, h )
 			
 			surface.SetTextPos( 5, 2 )
@@ -507,7 +558,14 @@ if(CLIENT) then
 		end
 		local notify = buildNotify(text, typ)
 		notify.IntendedX = 300
-		notify.IntendedY = select(2, notifybg:ChildrenSize()) + (notify.MaxH / 2)
+		local stser = 0
+		for i,k in pairs(notifybg:GetChildren()) do
+			stser = stser + k.MaxH + 5
+		end
+		if(table.Count(notifybg:GetChildren()) != 0) then
+			stser = stser - 5
+		end
+		notify.IntendedY = stser + (notify.MaxH / 2)
 		notify:SetParent(notifybg)
 		table.insert(notifications, notify)
 		
@@ -519,6 +577,7 @@ if(CLIENT) then
 			NotifyPanel = notifybg,
 			Callback = function()
 				finished = true
+				notify:Dock(TOP)
 				timer.Simple(time or 10, function()
 					notify:AlphaTo(0, 2, 0, function()
 						table.RemoveByValue(notifications, notify)
@@ -567,10 +626,12 @@ else
 	end
 	
 	function Vermilion:BroadcastNotification(text, typ, time)
+		Vermilion.Log("[Notification:Broadcast] " .. tostring(text))
 		self:AddNotification(VToolkit.GetValidPlayers(false), text, typ, time)
 	end
 	
 	function Vermilion:BroadcastNotify(text, typ, time)
+		Vermilion.Log("[Notification:Broadcast] " .. tostring(text))
 		self:AddNotification(VToolkit.GetValidPlayers(false), text, typ, time)
 	end
 end

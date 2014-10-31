@@ -73,6 +73,7 @@ MODULE.UiDCache = {}
 CPPI = {}
 
 function MODULE:CanTool(vplayer, ent, tool)
+	if(tool == "vermilion2_owner") then return true end
 	if(not MODULE:GetData("prop_protect_enabled", true, true)) then return true end
 	if(not IsValid(vplayer) or not IsValid(ent)) then return true end
 	if(ent:CreatedByMap() and MODULE:GetData("prop_protect_world", true)) then
@@ -178,12 +179,12 @@ function MODULE:InitShared()
 		if(Vermilion:GetModule("server_settings") != nil) then
 			local mgr = Vermilion:GetModule("server_settings")
 			mgr:AddCategory("Prop Protection", 2)
-			mgr:AddOption("prop_protect", "prop_protect_enabled", "Enable Prop Protection", "Checkbox", "Prop Protection", 30, true, "manage_prop_protection")
-			mgr:AddOption("prop_protect", "prop_protect_use", "Block unpermitted players from \"using\" other player's props", "Checkbox", "Prop Protection", 30, true, "manage_prop_protection")
-			mgr:AddOption("prop_protect", "prop_protect_physgun", "Block unpermitted players from using the physics gun on other player's props", "Checkbox", "Prop Protection", 30, true, "manage_prop_protection")
-			mgr:AddOption("prop_protect", "prop_protect_gravgun", "Block unpermitted players from using the gravity gun on other player's props", "Checkbox", "Prop Protection", 30, true, "manage_prop_protection")
-			mgr:AddOption("prop_protect", "prop_protect_toolgun", "Block unpermitted players from using the toolgun on other player's props", "Checkbox", "Prop Protection", 30, true, "manage_prop_protection")
-			mgr:AddOption("prop_protect", "prop_protect_world", "Blanket ban all physgun/toolgun interaction on map spawned props", "Checkbox", "Prop Protection", 30, true, "manage_prop_protection")
+			mgr:AddOption("prop_protect", "prop_protect_enabled", "Enable Prop Protection", "Checkbox", "Prop Protection", true, "manage_prop_protection")
+			mgr:AddOption("prop_protect", "prop_protect_use", "Block unpermitted players from \"using\" other player's props", "Checkbox", "Prop Protection", true, "manage_prop_protection")
+			mgr:AddOption("prop_protect", "prop_protect_physgun", "Block unpermitted players from using the physics gun on other player's props", "Checkbox", "Prop Protection", true, "manage_prop_protection")
+			mgr:AddOption("prop_protect", "prop_protect_gravgun", "Block unpermitted players from using the gravity gun on other player's props", "Checkbox", "Prop Protection", true, "manage_prop_protection")
+			mgr:AddOption("prop_protect", "prop_protect_toolgun", "Block unpermitted players from using the toolgun on other player's props", "Checkbox", "Prop Protection", true, "manage_prop_protection")
+			mgr:AddOption("prop_protect", "prop_protect_world", "Blanket ban all physgun/toolgun interaction on map spawned props", "Checkbox", "Prop Protection", true, "manage_prop_protection")
 		end
 	end)
 end

@@ -21,6 +21,7 @@ Vermilion.Data = {}
 Vermilion.Data.Rank = {}
 Vermilion.Data.RankOverview = {}
 Vermilion.Data.Permissions = {}
+Vermilion.Data.Module = {}
 
 net.Receive("Vermilion_SendRank", function()
 	Vermilion.Data.Rank = net.ReadTable()
@@ -73,7 +74,7 @@ function Vermilion:PopulateRankTable(ranklist, detailed, protected)
 		for i,k in pairs(self.Data.RankOverview) do
 			if(not protected and k.Protected) then continue end
 			if(k.IsDefault) then
-				local ln = ranklist:AddLine(k.Name, i, "Yes")
+				local ln = ranklist:AddLine(k.Name, k.InheritsFrom or "None", i, "Yes")
 				ln.Protected = k.Protected
 				for i1,k1 in pairs(ln.Columns) do
 					k1:SetContentAlignment(5)
@@ -83,7 +84,7 @@ function Vermilion:PopulateRankTable(ranklist, detailed, protected)
 				img:SetSize(16, 16)
 				ln:Add(img)
 			else
-				local ln = ranklist:AddLine(k.Name, i, "No")
+				local ln = ranklist:AddLine(k.Name, k.InheritsFrom or "None", i, "No")
 				ln.Protected = k.Protected
 				for i1,k1 in pairs(ln.Columns) do
 					k1:SetContentAlignment(5)
@@ -105,4 +106,26 @@ end
 net.Receive("VUpdatePlayerLists", function()
 	local tab = net.ReadTable()
 	hook.Run("Vermilion_PlayersList", tab)
+end)
+
+net.Receive("VModuleConfig", function()
+	Vermilion.Data.Module[net.ReadString()] = net.ReadTable()
+end)
+
+function Vermilion:GetModuleData(mod, name, def)
+	if(self.Data.Module[mod] == nil) then self.Data.Module[mod] = {} end
+	if(self.Data.Module[mod][name] == nil) then return def end
+	return self.Data.Module[mod][name]
+end
+
+function Vermilion:SetModuleData(mod, name, val)
+	if(self.Data.Module[mod] == nil) then self.Data.Module[mod] = {} end
+	self.Data.Module[mod][name] = val
+	--self:TriggerDataChangeHooks(mod, name)
+end
+
+Vermilion:AddHook("ChatText", "StopDefaultChat", false, function(index, name, text, typ)
+	if(typ == "joinleave") then
+		return true
+	end
 end)

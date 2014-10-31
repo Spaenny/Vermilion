@@ -17,15 +17,7 @@
  in any way, nor claims to be so. 
 ]]
 
-function Vermilion.GetFileName(name)
-	if(CLIENT) then
-		return "vermilion2/vermilion_client_" .. name .. ".txt"
-	elseif(SERVER) then
-		return "vermilion2/vermilion_server_" .. name .. ".txt"
-	else
-		return "vermilion2/vermilion_unknown_" .. name .. ".txt"
-	end
-end
+
 
 function Vermilion.ParseChatLineForCommand(line)
 	local command = string.Trim(string.sub(line, 1, string.find(line, " ") or nil))

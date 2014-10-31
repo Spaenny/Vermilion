@@ -35,13 +35,14 @@ function MODULE:InitServer()
 
 	
 	self:AddHook("PlayerSpawnVehicle", function(vplayer, model, class, data)
-		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), model)) then
+		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), model)) then // <-- this could backfire...
 			Vermilion:AddNotification(vplayer, "You cannot spawn this vehicle!", NOTIFY_ERROR)
 			return false
 		end
 	end)
 	
 	self:AddHook("Vermilion_IsEntityDuplicatable", function(vplayer, class, model)
+		if(not IsValid(vplayer)) then return end
 		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), model)) then
 			return false
 		end
@@ -222,7 +223,11 @@ function MODULE:InitClient()
 				if(panel.Vehicles == nil) then
 					panel.Vehicles = {}
 					for i,k in pairs(list.Get("Vehicles")) do
-						table.insert(panel.Vehicles, { Name = k.Name, ClassName = k.Model, StdClass = k.Class })
+						local name = k.Name
+						if(name == nil or name == "") then
+							name = k.Class
+						end
+						table.insert(panel.Vehicles, { Name = name, ClassName = k.Model, StdClass = k.Class })
 					end
 				end
 				if(table.Count(panel.AllVehicles:GetLines()) == 0) then

@@ -396,13 +396,61 @@ function VToolkit:CreateDialog(title, text)
 	confirmButton:SetSize(100, 20)
 	confirmButton:SetParent(panel)
 	self:SetDark(true)
+	
+	return panel
 end
 
 function VToolkit:CreateErrorDialog(text)
-	self:CreateDialog("Error", text)
+	return self:CreateDialog("Error", text)
 end
 
-function VToolkit:CreateConfirmDialog(text, completeFunc)
+function VToolkit:CreateComboboxPanel(text, choices, selected, completeFunc) // This can sometimes fall behind the VMenu and get lost... Fix it!
+	local panel = self:CreateFrame(
+		{
+			['size'] = { 500, 115 },
+			['pos'] = { (ScrW() / 2) - 250, (ScrH() / 2) - 50 },
+			['closeBtn'] = true,
+			['draggable'] = true,
+			['title'] = "Vermilion - Select an Option",
+			['bgBlur'] = true
+		}
+	)
+	panel:MakePopup()
+	--panel:DoModal()
+	--panel:SetDrawOnTop(true)
+	panel:SetAutoDelete(true)
+	
+	self:SetDark(false)
+	local textLabel = self:CreateLabel(text)
+	textLabel:SizeToContents()
+	textLabel:SetPos(250 - (textLabel:GetWide() / 2), 30)
+	textLabel:SetParent(panel)
+	textLabel:SetBright(true)
+	
+	local combo = VToolkit:CreateComboBox(choices, selected)
+	combo:SetPos(10, 55)
+	combo:SetSize(panel:GetWide() - 20, 25)
+	combo:SetParent(panel)
+
+	local confirmButton = self:CreateButton("OK", function(self)
+		completeFunc(combo:GetValue())
+		panel:Close()
+	end)
+	confirmButton:SetPos(255, 90)
+	confirmButton:SetSize(100, 20)
+	confirmButton:SetParent(panel)
+	
+	local cancelButton = self:CreateButton("Cancel", function(self)
+		panel:Close()
+	end)
+	cancelButton:SetPos(145, 90)
+	cancelButton:SetSize(100, 20)
+	cancelButton:SetParent(panel)
+	
+	return panel
+end
+
+function VToolkit:CreateConfirmDialog(text, completeFunc, options)
 	local panel = self:CreateFrame(
 		{
 			['size'] = { 500, 100 },
@@ -424,7 +472,15 @@ function VToolkit:CreateConfirmDialog(text, completeFunc)
 	textLabel:SetParent(panel)
 	textLabel:SetBright(true)
 	
-	local confirmButton = self:CreateButton("OK", function(self)
+	local confirmText = "OK"
+	local denyText = "Cancel"
+	
+	if(istable(options)) then
+		confirmText = options.Confirm or confirmText
+		denyText = options.Deny or denyText
+	end
+	
+	local confirmButton = self:CreateButton(confirmText, function(self)
 		completeFunc()
 		panel:Close()
 	end)
@@ -432,14 +488,30 @@ function VToolkit:CreateConfirmDialog(text, completeFunc)
 	confirmButton:SetSize(100, 20)
 	confirmButton:SetParent(panel)
 	
-	local cancelButton = self:CreateButton("Cancel", function(self)
+	local cancelButton = self:CreateButton(denyText, function(self)
 		panel:Close()
 	end)
 	cancelButton:SetPos(145, 75)
 	cancelButton:SetSize(100, 20)
 	cancelButton:SetParent(panel)
 	
+	panel.OldThink = panel.Think
+	function panel:Think()
+		if(istable(options)) then
+			if(options.Default != nil) then
+				if(options.Default) then
+					confirmButton:SetAlpha(255 * (0.5 + math.Clamp(math.sqrt(math.pow(math.sin(CurTime() * 2.5), 2)), 0, 0.5)))
+				else
+					cancelButton:SetAlpha(255 * (0.5 + math.Clamp(math.sqrt(math.pow(math.sin(CurTime() * 2.5), 2)), 0, 0.5)))
+				end
+			end
+		end
+		if(isfunction(self.OldThink)) then self:OldThink() end
+	end
+	
 	self:SetDark(true)
+	
+	return panel
 end
 
 function VToolkit:CreateTextInput(text, completeFunc)
@@ -489,6 +561,7 @@ function VToolkit:CreateTextInput(text, completeFunc)
 	cancelButton:SetParent(panel)
 	
 	self:SetDark(true)
+	return panel
 end
 
 function VToolkit:CreateList(cols, multiselect, sortable, colrunner)

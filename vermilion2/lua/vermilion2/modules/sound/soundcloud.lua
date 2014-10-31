@@ -57,21 +57,6 @@ if(CLIENT) then
 			surface.DrawOutlinedRect(0, 0, w, h)
 		end
 		
-		if(data.artwork_url != nil) then
-			timer.Simple(tonumber(tostring(resultTime)), function()
-				if(not IsValid(panel)) then return end
-				local art = vgui.Create("HTML")
-				art:SetPos(-10, -10)
-				art:SetSize(120, 100)
-				art:SetParent(panel)
-				--art:SetScrollbars(false)
-				art:OpenURL(data.artwork_url)
-				art:SetAlpha(40)
-				art:MoveToBack()
-			end)
-			resultTime = resultTime + 0.1
-		end
-		
 		local titleLabel = vgui.Create("DLabel")
 		titleLabel:SetText(name)
 		titleLabel:SetPos(10, 5)
@@ -150,15 +135,6 @@ if(CLIENT) then
 		end)
 		openInSoundCloudBtn:SetSize(150, 20)
 		openInSoundCloudBtn:SetImage("icon16/transmit.png")
-		openInSoundCloudBtn:SetParent(panel)
-		openInSoundCloudBtn:MoveRightOf(broadcastButton, 10)
-		openInSoundCloudBtn:SetPos(openInSoundCloudBtn:GetX(), playButton:GetY())
-		
-		local openInSoundCloudBtn = VToolkit:CreateButton("Open In SoundCloud", function()
-		
-		end)
-		openInSoundCloudBtn:SetSize(150, 20)
-		openInSoundCloudBtn:SetImage("icon16/world_go.png")
 		openInSoundCloudBtn:SetParent(panel)
 		openInSoundCloudBtn:MoveRightOf(broadcastButton, 10)
 		openInSoundCloudBtn:SetPos(openInSoundCloudBtn:GetX(), playButton:GetY())

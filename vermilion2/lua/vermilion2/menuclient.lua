@@ -197,13 +197,164 @@ MENU:AddPage({
 })
 
 MENU:AddPage({
+	ID = "api",
+	Name = "API Documentation",
+	Order = 10,
+	Category = "basic",
+	Size = { 600, 560 },
+	Builder = function(panel)
+		local label = VToolkit:CreateLabel(Vermilion:TranslateStr("under_construction"))
+		label:SetFont("DermaLarge")
+		label:SizeToContents()
+		label:SetPos((panel:GetWide() - label:GetWide()) / 2, (panel:GetTall() - label:GetTall()) / 2)
+		label:SetParent(panel)
+	end
+})
+
+MENU:AddPage({
 	ID = "credits",
 	Name = "Credits",
 	Order = 50,
 	Category = "basic",
-	Size = { 600, 600 },
+	Size = { 600, 560 },
 	Builder = function(panel)
-	
+		local title = VToolkit:CreateLabel("Vermilion Credits")
+		title:SetFont("DermaLarge")
+		title:SizeToContents()
+		title:SetParent(panel)
+		title:Dock(TOP)
+		title:DockMargin((600 - title:GetWide()) / 2, 10, 0, 10)
+		
+		local scrollPanel = vgui.Create("DScrollPanel")
+		scrollPanel:SetParent(panel)
+		scrollPanel:Dock(FILL)
+		
+		local contributors = {
+			{
+				Name = "Ned",
+				SteamID = "STEAM_0:0:44370296",
+				Role = "Project Lead - Coding",
+			},
+			{
+				Name = "Wheatley",
+				SteamID = "STEAM_0:0:44277237",
+				Role = "GUI Skin Designer"
+			},
+			{
+				Name = "TehAngel",
+				SteamID = "STEAM_0:1:79012222",
+				Role = "Ideas, Persuasion and General Help"
+			}
+		}
+		
+		local size = 64
+		
+		for i,k in pairs(contributors) do
+			local contributorPanel = vgui.Create("DPanel")
+			contributorPanel:SetDrawBackground(false)
+			contributorPanel:Dock(TOP)
+			contributorPanel:DockPadding(10, 2, 10, 2)
+			contributorPanel:SetParent(scrollPanel)
+			contributorPanel:SetTall(68)
+			
+			local avb = vgui.Create("DButton")
+			avb:SetSize(size, size)
+			avb:SetParent(contributorPanel)
+			avb:Dock(LEFT)
+			avb:DockMargin(0, 0, 10, 0)
+			
+			local av = VToolkit:CreateAvatarImage(k.SteamID, size)
+			av:SetParent(avb)
+			av:SetMouseInputEnabled(false)
+			
+			function avb:DoClick(mc)
+				gui.OpenURL("http://steamcommunity.com/profiles/" .. util.SteamIDTo64(k.SteamID))
+			end
+			
+			av:SetCursor("hand")
+			
+			local dataPanel = vgui.Create("DPanel")
+			dataPanel:SetTall(64)
+			dataPanel:Dock(LEFT)
+			dataPanel:DockPadding(0, 10, 0, 0)
+			dataPanel:SetWide(300)
+			dataPanel:SetParent(contributorPanel)
+			dataPanel:SetDrawBackground(false)
+			
+			local name = vgui.Create("DLabel")
+			steamworks.RequestPlayerInfo(util.SteamIDTo64(k.SteamID))
+			timer.Simple(3, function()
+				if(not IsValid(name)) then return end
+				name:SetText(steamworks.GetPlayerName(util.SteamIDTo64(k.SteamID)))
+				name:SizeToContents()
+			end)
+			name:SetText(k.Name)
+			name:SetFont("DermaDefaultBold")
+			name:SizeToContents()
+			name:Dock(TOP)
+			name:SetDark(true)
+			name:SetParent(dataPanel)
+			
+			local role = vgui.Create("DLabel")
+			role:SetText(k.Role)
+			role:SizeToContents()
+			role:Dock(TOP)
+			role:SetDark(true)
+			role:SetParent(dataPanel)
+		end
+		
+		local thanks = VToolkit:CreateLabel("Thank you to anyone else who has contributed ideas and has supported Vermilion throughout development!")
+		thanks:Dock(TOP)
+		thanks:DockMargin(10, 10, 10, 10)
+		thanks:SetParent(scrollPanel)
+		thanks:SetDark(true)
+		
+		local poweredBySoundCloud = VToolkit:CreateLabel("Vermilion uses resources from the SoundCloud API. Use of the services provided by Vermilion that use the SoundCloud API constitutes acceptance of the SoundCloud API terms of use.")
+		poweredBySoundCloud:Dock(TOP)
+		poweredBySoundCloud:SetWrap(true)
+		poweredBySoundCloud:SetTall(poweredBySoundCloud:GetTall() * 2)
+		poweredBySoundCloud:DockMargin(10, 10, 10, 10)
+		poweredBySoundCloud:SetParent(scrollPanel)
+		poweredBySoundCloud:SetDark(true)
+		
+		local poweredByFGIP = VToolkit:CreateLabel("The GeoIP services in Vermilion are powered by freegeoip.net. freegeoip.net includes GeoLite data created by MaxMind, available from maxmind.com.")
+		poweredByFGIP:Dock(TOP)
+		poweredByFGIP:SetWrap(true)
+		poweredByFGIP:SetTall(poweredByFGIP:GetTall() * 2)
+		poweredByFGIP:DockMargin(10, 10, 10, 10)
+		poweredByFGIP:SetParent(scrollPanel)
+		poweredByFGIP:SetDark(true)
+		
+		
+		local buttonBar = vgui.Create("DPanel")
+		buttonBar:Dock(TOP)
+		buttonBar:DockMargin(10, 10, 10, 10)
+		buttonBar:SetParent(scrollPanel)
+		buttonBar:SetTall(25)
+		buttonBar:SetDrawBackground(false)
+		
+		local gotoWorkshop = VToolkit:CreateButton("Vermilion Workshop Page", function()
+			steamworks.ViewFile("295053419")
+		end)
+		gotoWorkshop:Dock(LEFT)
+		gotoWorkshop:SetSize(200, 25)
+		gotoWorkshop:SetParent(buttonBar)
+		
+		local openGithub = VToolkit:CreateButton("GitHub Repository", function()
+			gui.OpenURL("http://github.com/nedhyett/Vermilion")
+		end)
+		openGithub:Dock(RIGHT)
+		openGithub:SetSize(200, 25)
+		openGithub:SetParent(buttonBar)
+		
+		local openSteamGroup = VToolkit:CreateButton("Steam Group", function()
+			gui.OpenURL("http://steamcommunity.com/groups/VSM-GMOD")
+		end)
+		openSteamGroup:Dock(TOP)
+		openSteamGroup:SetSize(scrollPanel:GetWide(), 25)
+		openSteamGroup:DockMargin(5, 0, 5, 0)
+		openSteamGroup:SetParent(buttonBar)
+		
 	end
 })
 
@@ -387,8 +538,8 @@ timer.Simple(1, function()
 		end)
 	end
 
-	function MENU:Close()
-		if(hook.Run(Vermilion.Event.MENU_CLOSING) == false or not MENU.IsOpen) then return end
+	function MENU:Close(force)
+		if(not force and (hook.Run(Vermilion.Event.MENU_CLOSING) == false or not MENU.IsOpen)) then return end
 		
 		MENU.TabPanel:MoveTo(-170, 10, 0.5, 0, -3)
 		MENU.ContentPanel:MoveTo(200, ScrH(), 0.5, 0, -3, function()

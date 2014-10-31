@@ -30,16 +30,21 @@ MODULE.NetworkStrings = {
 }
 
 function MODULE:RegisterChatCommands()
-	Vermilion:AddChatCommand("checkaddons", function(sender, text, log)
-		if(not MODULE:GetData("enabled", true, true)) then return end
-		MODULE:NetStart("VAddonListRequest")
-		local tab = {}
-		for i,k in pairs(engine.GetAddons()) do
-			if(k.mounted) then table.insert(tab, k) end
+	Vermilion:AddChatCommand({
+		Name = "checkaddons",
+		Description = "Brings up the addon validator again.",
+		CanRunOnDS = false,
+		Function = function(sender, text, log)
+			if(not MODULE:GetData("enabled", true, true)) then return end
+			MODULE:NetStart("VAddonListRequest")
+			local tab = {}
+			for i,k in pairs(engine.GetAddons()) do
+				if(k.mounted) then table.insert(tab, k) end
+			end
+			net.WriteTable(tab)
+			net.Send(sender)
 		end
-		net.WriteTable(tab)
-		net.Send(sender)
-	end)
+	})
 end
 
 function MODULE:InitShared()
@@ -142,7 +147,7 @@ function MODULE:InitClient()
 				VToolkit:CreateConfirmDialog("Are you sure?\nThis will take effect on every server you join.\nTo reset it, type \"vermilion_addonnag_do_not_ask 0\" into the console!", function()
 					RunConsoleCommand("vermilion_addonnag_do_not_ask", "1")
 					frame:Close()
-				end)
+				end, { Confirm = "Yes", Deny = "No", Default = false })
 			end)
 			donotaskButton:SetPos(330, panel:GetTall() - 50)
 			donotaskButton:SetSize(180, 35)

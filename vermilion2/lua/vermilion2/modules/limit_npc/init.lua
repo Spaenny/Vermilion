@@ -42,6 +42,7 @@ function MODULE:InitServer()
 	end)
 	
 	self:AddHook("Vermilion_IsEntityDuplicatable", function(vplayer, class)
+		if(not IsValid(vplayer)) then return end
 		if(table.HasValue(MODULE:GetData(Vermilion:GetUser(vplayer):GetRankName(), {}, true), class)) then
 			return false
 		end
@@ -217,7 +218,11 @@ function MODULE:InitClient()
 				if(panel.NPCs == nil) then
 					panel.NPCs = {}
 					for i,k in pairs(list.Get("NPC")) do
-						table.insert(panel.NPCs, { Name = k.Name, ClassName = k.Class })
+						local name = k.Name
+						if(name == nil or name == "") then
+							name = k.Class
+						end
+						table.insert(panel.NPCs, { Name = name, ClassName = k.Class })
 					end
 				end
 				if(table.Count(panel.AllNPCs:GetLines()) == 0) then

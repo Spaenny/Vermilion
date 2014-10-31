@@ -29,11 +29,26 @@ if(not file.Exists("vermilion2/", "DATA")) then
 	file.CreateDir("vermilion2")
 end
 
+Vermilion = {}
+
+function Vermilion.GetFileName(name)
+	if(CLIENT) then
+		return "vermilion2/vermilion_client_" .. name .. ".txt"
+	elseif(SERVER) then
+		return "vermilion2/vermilion_server_" .. name .. ".txt"
+	else
+		return "vermilion2/vermilion_unknown_" .. name .. ".txt"
+	end
+end
+
+if(not file.Exists(Vermilion.GetFileName("settings"), "DATA") and SERVER) then
+	Vermilion.FirstRun = true
+end
+
 
 local startTime = os.clock()
 
 
-Vermilion = {}
 
 Vermilion.Colours = {
 	White = Color(255, 255, 255),
@@ -61,7 +76,11 @@ Vermilion.Event = {
 	["MENU_TAB"] = "Vermilion2_MenuChangeTab",
 	["CLIENT_GOT_RANKS"] = "Vermilion2_ClientRanks",
 	["CLIENT_GOT_RANK_OVERVIEWS"] = "Vermilion2_AllRanks",
-	["CheckLimit"] = "Vermilion2_CheckLimit"
+	["CheckLimit"] = "Vermilion2_CheckLimit",
+	["RankCreated"] = "Vermilion2_RankCreate",
+	["RankDeleted"] = "Vermilion2_RankDelete",
+	["RankRenamed"] = "Vermilion2_RankRename",
+	["ShuttingDown"] = "Vermilion2_Shutdown"
 }
 
 function Vermilion.Log( str )
@@ -101,7 +120,9 @@ local files = {
 	{ "vermilion2/cl_config.lua", true, true, false },
 	{ "vermilion2/menuclient.lua", true, true, false },
 	{ "vermilion2/chatcommands.lua", false, false, true },
-	{ "vermilion2/chatpredict.lua", true, true, true }
+	{ "vermilion2/chatpredict.lua", true, true, true },
+	{ "vermilion2/geoip.lua", true, true, true },
+	{ "vermilion2/memoryviewer.lua", true, true, true }
 }
 
 local clientfiles = 0
@@ -150,3 +171,5 @@ else
 		" files."
 	})
 end
+
+Vermilion.FirstRun = false

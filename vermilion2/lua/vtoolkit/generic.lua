@@ -47,6 +47,47 @@ function VToolkit.LookupPlayerBySteamID(steamid)
 	return nil
 end
 
+function VToolkit.GetValidPlayers(withBots)
+	withBots = withBots or true
+	return VToolkit.FilterTable(player.GetAll(), function(index, ply)
+		if(not IsValid(ply)) then return false end
+		if(not withBots and ply:IsBot()) then return false end
+		return true
+	end)
+end
+
+function VToolkit.GetPlayerNames()
+	local tab = {}
+	for i,k in pairs(VToolkit.GetValidPlayers()) do
+		table.insert(tab, k:GetName())
+	end
+	return tab
+end
+
+function VToolkit.MatchPlayerPart(pool, query)
+	if(query == nil) then
+		query = pool
+		pool = VToolkit.GetValidPlayers()
+	end
+	local result = {}
+	for i,k in pairs(pool) do
+		if(string.find(string.lower(k:GetName()), string.lower(query))) then
+			table.insert(result, k:GetName())
+		end
+	end
+	return result
+end
+
+function VToolkit.MatchStringPart(pool, query)
+	local result = {}
+	for i,k in pairs(pool) do
+		if(string.find(string.lower(k), string.lower(query))) then
+			table.insert(result, k)
+		end
+	end
+	return result
+end
+
 function VToolkit.CBound(Point1, Point2)
 	local CBound = {}
 	CBound.Point1 = Point1
@@ -61,7 +102,7 @@ function VToolkit.CBound(Point1, Point2)
 	end
 	
 	function CBound:GetEnts()
-		return ents.FindInBox(self.Point2, self.Point2)
+		return ents.FindInBox(self.Point1, self.Point2)
 	end
 	
 	function CBound:Intersects(ocbound)
@@ -169,15 +210,6 @@ function VToolkit.FilterTable(tab, callback)
 	return new
 end
 
-function VToolkit.GetValidPlayers(withBots)
-	withBots = withBots or true
-	return VToolkit.FilterTable(player.GetAll(), function(index, ply)
-		if(not IsValid(ply)) then return false end
-		if(not withBots and ply:IsBot()) then return false end
-		return true
-	end)
-end
-
 function VToolkit.RemoveSensitiveInfo(t, indent, done, parent, grandparent)
 	local ntab = {}
 	done = done or {}
@@ -205,6 +237,30 @@ function VToolkit.Merge(destination, source)
 		end
 		if(not has) then table.insert(destination, k) end
 	end
+end
+
+function VToolkit:FindFiles(startingAt, extension)
+	local tab = {}
+	local path = startingAt
+	if(string.StartWith(path, "/")) then
+		path = string.sub(path, 2)
+	end
+	if(path == "") then path = "*" elseif(not string.EndsWith(path, "/*")) then path = path .. "/*" end
+	local files, dirs = file.Find(path, "GAME")
+	if(istable(files)) then
+		for i,k in pairs(files) do
+			if(string.EndsWith(k, extension)) then
+				table.insert(tab, startingAt .. "/" .. k)
+			end
+		end
+	end
+	if(istable(dirs)) then
+		for i,k in pairs(dirs) do
+			if(startingAt .. "/" .. k == nil) then continue end
+			table.Add(tab, self:FindFiles(startingAt .. "/" .. k, extension))
+		end
+	end
+	return tab
 end
 
 function VToolkit.GetWeaponName(vclass)

@@ -41,17 +41,37 @@ MODULE.DisplayXPos2 = 0
 MODULE.SoundTimer = nil
 
 function MODULE:RegisterChatCommands()
-	Vermilion:AddChatCommand("changelevel", function(sender, text, log)
-		if(Vermilion:HasPermissionError(sender, "manage_map", log)) then
+
+	Vermilion:AddChatCommand({
+		Name = "changelevel",
+		Description = "Changes the level.",
+		Syntax = "<map> [time:seconds]",
+		CanMute = true,
+		Permissions = { "manage_map" },
+		Predictor = function(pos, current, all, vplayer)
+			if(pos == 1) then
+				if(string.len(current) == 0) then
+					return {{Name = "", Syntax = "Start typing..."}}
+				end
+				local tab = {}
+				for i,k in pairs(MODULE.MapCache) do
+					if(string.find(string.lower(k[1]), string.lower(current))) then
+						table.insert(tab, k[1])
+					end
+				end
+				return tab
+			end
+		end,
+		Function = function(sender, text, log, glog)
 			if(table.Count(text) < 1) then
-				log("Invalid Syntax.")
-				return
+				log(Vermilion:TranslateStr("bad_syntax", nil, sender), NOTIFY_ERROR)
+				return false
 			end
 			local inTime = 0
 			if(table.Count(text) > 1) then
 				if(tonumber(text[2]) == nil) then
-					log("That isn't a number!")
-					return
+					log(Vermilion:TranslateStr("not_number", nil, sender), NOTIFY_ERROR)
+					return false
 				end
 				inTime = tonumber(text[2])
 			end
@@ -70,30 +90,22 @@ function MODULE:RegisterChatCommands()
 			net.WriteInt(MODULE.MapChangeIn, 32)
 			net.WriteString(MODULE.MapChangeTo)
 			net.Broadcast()
-			Vermilion:BroadcastNotification(sender:GetName() .. " has instigated a level change to " .. MODULE.MapChangeTo .. ".")
+			glog(sender:GetName() .. " has instigated a level change to " .. MODULE.MapChangeTo .. ".")
 		end
-	end, "<map> [time]", function(pos, current)
-		if(pos == 1) then
-			if(string.len(current) == 0) then
-				return {{Name = "", Syntax = "Start typing..."}}
-			end
-			local tab = {}
-			for i,k in pairs(MODULE.MapCache) do
-				if(string.find(string.lower(k[1]), string.lower(current))) then
-					table.insert(tab, k[1])
-				end
-			end
-			return tab
-		end
-	end)
+	})
 	
-	Vermilion:AddChatCommand("reloadmap", function(sender, text, log)
-		if(Vermilion:HasPermissionError(sender, "manage_map", log)) then
+	Vermilion:AddChatCommand({
+		Name = "reloadmap",
+		Description = "Reloads the map.",
+		Syntax = "[time:seconds]",
+		CanMute = true,
+		Permissions = { "manage_map" },
+		Function = function(sender, text, log, glog)
 			local inTime = 0
 			if(table.Count(text) > 0) then
 				if(tonumber(text[1]) == nil) then
-					log("That isn't a number!", NOTIFY_ERROR)
-					return
+					log(Vermilion:TranslateStr("not_number", nil, sender), NOTIFY_ERROR)
+					return false
 				end
 				inTime = tonumber(text[1])
 			end
@@ -108,20 +120,24 @@ function MODULE:RegisterChatCommands()
 			net.WriteInt(MODULE.MapChangeIn, 32)
 			net.WriteString(MODULE.MapChangeTo)
 			net.Broadcast()
-			Vermilion:BroadcastNotification(sender:GetName() .. " has instigated a level reload.")
+			glog(sender:GetName() .. " has instigated a level reload.")
 		end
-	end, "[time]")
+	})
 	
-	Vermilion:AddChatCommand("abortlevelchange", function(sender, text, log)
-		if(Vermilion:HasPermission(sender, "manage_map")) then
+	Vermilion:AddChatCommand({
+		Name = "abortlevelchange",
+		Description = "Stops an active level change.",
+		CanMute = true,
+		Permissions = { "manage_map" },
+		Function = function(sender, text, log, glog)
 			MODULE.MapChangeInProgress = false
 			MODULE.MapChangeIn = nil
 			MODULE.MapChangeTo = nil
 			MODULE:NetStart("VAbortMapChange")
 			net.Broadcast()
-			Vermilion:BroadcastNotification(sender:GetName() .. " has halted the level change.")
+			glog(sender:GetName() .. " has halted the level change.")
 		end
-	end)
+	})
 	
 end
 
@@ -458,7 +474,7 @@ function MODULE:InitClient()
 	
 	self:NetHook("VBroadcastSchedule", function()
 		MODULE.MapChangeInProgress = true
-		MODULE.MapChangeIn = net.ReadInt(32) + VToolkit.TimeDiff
+		MODULE.MapChangeIn = net.ReadInt(32)// + VToolkit.TimeDiff
 		MODULE.MapChangeTo = net.ReadString()
 		MODULE.HasMap = file.Exists("maps/" .. MODULE.MapChangeTo .. ".bsp", "GAME")
 	end)

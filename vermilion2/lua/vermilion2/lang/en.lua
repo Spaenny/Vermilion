@@ -23,6 +23,11 @@ lang:Add("no_users", "No such player exists on the server.")
 lang:Add("ambiguous_users", "Ambiguous results for search \"%s\". (Matched %s users).")
 lang:Add("access_denied", "Access Denied!")
 lang:Add("under_construction", "Under Construction!")
+lang:Add("bad_syntax", "Invalid Syntax!")
+lang:Add("not_number", "That isn't a number!")
+lang:Add("player_immune", "%s is immune to you.")
+lang:Add("ban_self", "You can't ban yourself!")
+lang:Add("kick_self", "You can't kick yourself!")
 
 
 --[[

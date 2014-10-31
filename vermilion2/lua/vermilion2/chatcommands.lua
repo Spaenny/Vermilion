@@ -20,18 +20,59 @@
 Vermilion.ChatCommands = {}
 Vermilion.ChatAliases = {}
 
-function Vermilion:AddChatCommand(activator, func, syntax, predictor)
-	syntax = syntax or ""
+local commandMustHave = { "Name", "Function" }
+local commandShouldHave = {
+	{ "Description", "There isn't one." },
+	{ "Predictor", nil },
+	{ "Syntax", "" },
+	{ "CanMute", false },
+	{ "CanRunOnDS", true },
+	{ "Permissions", {} },
+	{ "AllBroadcast", nil },
+	{ "AllValid", nil }
+}
+
+local function commandGLOG(commandname, text, typ, time) -- Global Logger: use this to mute commands.
+	if(text == nil) then return end
+	if(Vermilion:GetData("muted_commands", {}, true)[commandname] == false) then return end
+	Vermilion:BroadcastNotification(text, typ, time)
+end
+
+function Vermilion:AddChatCommand(props)
+	for i,k in pairs(commandMustHave) do
+		assert(props[k] != nil)
+	end
+	for i,k in pairs(commandShouldHave) do
+		if(props[k[1]] == nil) then props[k[1]] = k[2] end
+	end
 	if(self.ChatCommands[activator] != nil) then
 		self.Log("Chat command " .. activator .. " has been overwritten!")
 	end
-	self.ChatCommands[activator] = { Function = func, Syntax = syntax, Predictor = predictor }
-	Vermilion:AddCommand(activator, function(sender, args)
-		local success, err = pcall(func, sender, args, function(text) Vermilion.Log(text) end)
-		if(not success) then
-			Vermilion.Log("Command failed with an error: " .. tostring(err))
-		end
-	end)
+	if(props.CanRunOnDS) then
+		Vermilion:AddCommand(props.Name, function(sender, args)
+			for i,k in pairs(props.Permissions) do
+				if(not Vermilion:HasPermission(sender, k)) then
+					Vermilion.Log("Access denied!")
+					return
+				end
+			end
+			if(not IsValid(sender)) then
+				sender = {}
+				function sender:GetName()
+					return "Console"
+				end
+				function sender:SteamID()
+					return "CONSOLE"
+				end
+			end
+			local success = props.Function(sender, args, function(text) Vermilion.Log(text) end, function(text, typ, time) commandGLOG(props.Name, text, typ, time) end)
+			if(success == nil) then success = true end
+			if(not success) then
+				Vermilion.Log("Command failed!")
+			end
+		end)
+	end
+	self.ChatCommands[props.Name] = props
 end
 
 function Vermilion:AliasChatCommand(command, aliasTo)
@@ -41,6 +82,8 @@ function Vermilion:AliasChatCommand(command, aliasTo)
 	self.ChatAliases[aliasTo] = command
 end
 
+
+
 function Vermilion:HandleChat(vplayer, text, targetLogger, isConsole)
 	targetLogger = targetLogger or vplayer
 	local logFunc = nil
@@ -49,6 +92,15 @@ function Vermilion:HandleChat(vplayer, text, targetLogger, isConsole)
 	else
 		if(isConsole) then
 			logFunc = function(text) if(sender == nil) then Vermilion.Log(text) else sender:PrintMessage(HUD_PRINTCONSOLE, text) end end
+			if(sender == nil) then
+				sender = {}
+				function sender:GetName()
+					return "Console"
+				end
+				function sender:SteamID()
+					return "CONSOLE"
+				end
+			end
 		else
 			logFunc = function(text, typ, delay) Vermilion:AddNotification(targetLogger, text, typ, delay) end
 		end
@@ -86,10 +138,55 @@ function Vermilion:HandleChat(vplayer, text, targetLogger, isConsole)
 		end
 		local command = Vermilion.ChatCommands[commandName]
 		if(command != nil) then
+			for i,k in pairs(command.Permissions) do
+				if(not Vermilion:HasPermissionError(vplayer, k, logFunc)) then return "" end
+			end
 			table.remove(parts, 1)
-			local success, err = pcall(command.Function, vplayer, parts, logFunc)
-			if(not success) then 
-				logFunc("Command failed with an error " .. tostring(err), NOTIFY_ERROR, 25) 
+			local atindexes = {}
+			for i,k in pairs(parts) do
+				if(k == "@") then // <-- this does hax to make sure I don't have to program in a load of possible cases in each command. Plus this means that I can add other symbols at some point.
+					table.insert(atindexes, i)
+				end
+			end
+			if(table.Count(atindexes) > 0) then
+				if(command.AllValid != nil) then
+					for i,k in pairs(atindexes) do
+						for i1,k1 in pairs(command.AllValid) do
+							if(k1.Size != nil) then
+								if(k1.Size != table.Count(parts)) then
+									continue
+								end
+							end
+							if(not table.HasValue(k1.Indexes, k)) then
+								logFunc("Cannot specify all players (@) here!", NOTIFY_ERROR)
+								return ""
+							end
+						end
+					end
+				else
+					logFunc("Cannot specify all players (@) here!", NOTIFY_ERROR)
+					return ""
+				end
+				local edittable = table.Copy(parts)
+				for i,k in pairs(VToolkit.GetValidPlayers()) do
+					for i1,k1 in pairs(atindexes) do
+						edittable[k1] = k:GetName()
+					end
+					local success = command.Function(vplayer, edittable, logFunc, function() end) // <-- we ignore global output here, otherwise we get spammed.
+					if(success == nil) then success = true end
+					if(not success) then 
+						return "" // <-- we can assume that this error will happen again, so don't bother repeating.
+					end
+				end
+				if(command.AllBroadcast != nil) then
+					commandGLOG(command.Name, command.AllBroadcast(vplayer, parts))
+				end
+			else
+				local success = command.Function(vplayer, parts, logFunc, function(text, typ, time) commandGLOG(commandName, text, typ, time) end)
+				if(success == nil) then success = true end
+				if(not success) then 
+					Vermilion.Log("Command failed!") 
+				end
 			end
 			return ""
 		else

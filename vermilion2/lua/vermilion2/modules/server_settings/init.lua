@@ -24,7 +24,6 @@ MODULE.Description = "Provides a collection of basic options for administrating 
 MODULE.Author = "Ned"
 MODULE.Permissions = {
 	"manage_server",
-	"set_motd",
 	"no_fall_damage",
 	"reduced_fall_damage",
 	"ignore_pvp_state",
@@ -36,148 +35,73 @@ MODULE.Permissions = {
 	"chat",
 	"use_voip",
 	"hear_voip",
-	"add_voip_channel",
-	"join_voip_channel",
-	"delete_voip_channel"
+	
+	"setnoclip",
+	"setnoclip_others",
+	"setfalldamage",
+	"setfalldamage_others",
+	"setdamage",
+	"setdamage_others",
+	"setflashlight",
+	"setflashlight_others",
+	"setuammo",
+	"setuammo_others",
+	
+	
+	
+	"change_motd"
 }
 MODULE.NetworkStrings = {
 	"VServerGetProperties", -- used to build the settings page
 	"VServerUpdate",
+	"VRequestMOTD",
+	"VUpdateMOTD",
+	"VUpdateMOTDSettings",
+	"VGetMOTDProperties",
+	"VGetCommandMuting",
+	"VSetCommandMuting"
+}
+MODULE.DefaultPermissions = {
+	{ Name = "admin", Permissions = {
+			"no_fall_damage",
+			"no_damage",
+			"unlimited_ammo",
+			"enable_flashlight",
+			"noclip",
+			"can_spray",
+			"chat",
+			"use_voip",
+			"hear_voip",
+			"setnoclip",
+			"setnoclip_others",
+			"setfalldamage",
+			"setfalldamage_others",
+			"setdamage",
+			"setdamage_others",
+			"setflashlight",
+			"setflashlight_others",
+			"setuammo",
+			"setuammo_others"			
+		}
+	},
+	{ Name = "player", Permissions = {
+			"reduced_fall_damage",
+			"enable_flashlight",
+			"noclip",
+			"can_spray",
+			"chat",
+			"use_voip",
+			"hear_voip",
+			"setnoclip",
+			"setfalldamage",
+			"setdamage",
+			"setflashlight",
+			"setuammo"
+		}
+	}
 }
 
-MODULE.DefaultVoIPChannels = {
-	{ Name = "Default", Password = nil }
-}
 
-function MODULE:AddVoIPChannel(name, password)
-	if(name == nil or name == "") then return false end
-	for i,k in pairs(self:GetData("voip_channels", self.DefaultVoIPChannels, true)) do
-		if(k.Name == name) then return false end
-	end
-	local tPassword = nil
-	if(password != nil) then
-		tPassword = util.CRC(password)
-	end
-	table.insert(self:GetData("voip_channels", self.DefaultVoIPChannels, true), { Name = name, Password = tPassword })
-	return true
-end
-
-function MODULE:JoinChannel(vplayer, chan, pass)
-	local chanObj = nil
-	for i,k in pairs(self:GetData("voip_channels", self.DefaultVoIPChannels, true)) do
-		if(k.Name == chan) then
-			chanObj = k
-			break
-		end
-	end
-	if(chanObj != nil) then
-		if(chanObj.Password != nil) then
-			if(pass == nil) then return "BAD_PASSWORD" end
-			if(chanObj.Password != util.CRC(pass)) then
-				return "BAD_PASSWORD"
-			end
-		end
-		Vermilion:GetUser(vplayer).VoIPChannel = chan
-		return "GOOD"
-	end
-	return "NO_SUCH_CHAN"
-end
-
-function MODULE:RegisterChatCommands()
-
-	Vermilion:AddChatCommand("addchan", function(sender, text, log)
-		if(Vermilion:HasPermission(sender, "add_voip_channel")) then
-			if(not MODULE:AddVoIPChannel(text[1], text[2])) then
-				log("VoIP Channel already exists!", NOTIFY_ERROR)
-			else
-				log("Created VoIP Channel!")
-			end
-		end
-	end, "<name> [password]")
-	
-	Vermilion:AddChatCommand("delchan", function(sender, text, log)
-		if(Vermilion:HasPermission(sender, "delete_voip_channel")) then
-			local has = false
-			for i,k in pairs(MODULE:GetData("voip_channels", MODULE.DefaultVoIPChannels, true)) do
-				if(k.Name == text[1]) then has = k break end
-			end
-			if(text[1] == "Default") then has = false end
-			if(not has) then
-				log("No such VoIP Channel!", NOTIFY_ERROR)
-				return
-			end
-			table.RemoveByValue(MODULE:GetData("voip_channels", MODULE.DefaultVoIPChannels, true), has)
-			for i,k in pairs(Vermilion.Data.Users) do
-				if(k.VoIPChannel == text[1]) then
-					k.VoIPChannel = "Default"
-				end
-			end
-			log("Removed VoIP Channel!")
-		end
-	end, "<chan>", function(pos, current)
-		if(pos == 1) then
-			local tab = {}
-			for i,k in pairs(MODULE:GetData("voip_channels", MODULE.DefaultVoIPChannels, true)) do
-				if(string.find(string.lower(k.Name), string.lower(current))) then
-					table.insert(tab, k.Name)
-				end
-			end
-			return tab
-		end
-	end)
-	
-	Vermilion:AddChatCommand("changechanpass", function(sender, text, log)
-		if(Vermilion:HasPermission(sender, "add_voip_channel")) then
-			local has = false
-			for i,k in pairs(MODULE:GetData("voip_channels", MODULE.DefaultVoIPChannels, true)) do
-				if(k.Name == text[1]) then has = k break end
-			end
-			if(has.Name == "Default") then
-				
-			end
-		end
-	end, "<chan> [oldpass] <newpass>")
-	
-	Vermilion:AddChatCommand("joinchan", function(sender, text, log)
-		if(Vermilion:HasPermission(sender, "join_voip_channel")) then
-			local result = MODULE:JoinChannel(sender, text[1], text[2])
-			if(result == "BAD_PASSWORD") then
-				log("Bad VoIP Channel password!", NOTIFY_ERROR)
-			elseif(result == "NO_SUCH_CHAN") then
-				log("No such VoIP Channel!", NOTIFY_ERROR)
-			else
-				log("Joined VoIP Channel!")
-			end
-		end
-	end, "<channel> [password]", function(pos, current, all)
-		if(pos == 1) then
-			local tab = {}
-			for i,k in pairs(MODULE:GetData("voip_channels", MODULE.DefaultVoIPChannels, true)) do
-				if(string.find(string.lower(k.Name), string.lower(current))) then
-					table.insert(tab, k.Name)
-				end
-			end
-			return tab
-		end
-		if(pos == 2) then
-			local chan = nil
-			for i,k in pairs(MODULE:GetData("voip_channels", MODULE.DefaultVoIPChannels, true)) do
-				if(k.Name == all[1]) then
-					chan = k
-					break
-				end
-			end
-			if(chan != nil) then
-				if(chan.Password == nil) then
-					return {{ Name = "", Syntax = "No password required!" }}
-				else
-					return {{ Name = "", Syntax = "Password Required!" }}
-				end
-			end
-		end
-	end)
-	
-end
 
 local categories = {
 	{ Name = "Limits", Order = 0 },
@@ -190,82 +114,78 @@ local options = {
 			"Off",
 			"All Players",
 			"Permissions Based"
-		}, Category = "Limits", CategoryWeight = 0, Default = 3 },
+		}, Category = "Limits", Default = 3 },
 	{ Module = "limit_spawn", Name = "enable_limit_remover", GuiText = "Spawn Limit Remover:", Type = "Combobox", Options = {
 			"Off",
 			"All Players",
 			"Permissions Based"
-		}, Category = "Limits", CategoryWeight = 0, Default = 3 },
+		}, Category = "Limits", Default = 3 },
 	{ Name = "enable_no_damage", GuiText = "Disable Damage:", Type = "Combobox", Options = {
 			"Off",
 			"All Players",
 			"Permissions Based"
-		}, Category = "Limits", CategoryWeight = 0, Default = 3 },
+		}, Category = "Limits", Default = 3 },
 	{ Name = "flashlight_control", GuiText = "Flashlight Control:", Type = "Combobox", Options = {
 			"Off",
 			"All Players Blocked",
 			"All Players Allowed",
 			"Permissions Based"
-		}, Category = "Limits", CategoryWeight = 0, Default = 4 },
+		}, Category = "Limits", Default = 4 },
 	{ Name = "noclip_control", GuiText = "Noclip Control:", Type = "Combobox", Options = {
 			"Off",
 			"All Players Blocked",
 			"All Players Allowed",
 			"Permissions Based"
-		}, Category = "Limits", CategoryWeight = 0, Default = 4 },
+		}, Category = "Limits", Default = 4 },
 	{ Name = "spray_control", GuiText = "Spray Control:", Type = "Combobox", Options = {
 			"Off",
 			"All Players Blocked",
 			"All Players Allowed",
 			"Permissions Based"
-		}, Category = "Limits", CategoryWeight = 0, Default = 4 },
+		}, Category = "Limits", Default = 4 },
 	{ Name = "voip_control", GuiText = "VoIP Control:", Type = "Combobox", Options = {
 			"Do not limit",
 			"Globally Disable VoIP",
 			"Globally Enable VoIP",
 			"Permissions Based"
-		}, Category = "Limits", CategoryWeight = 0, Default = 4 },
+		}, Category = "Limits", Default = 4 },
 	{ Name = "limit_chat", GuiText = "Chat Blocker:", Type = "Combobox", Options = {
 			"Off",
 			"Globally Disable Chat",
 			"Permissions Based"
-		}, Category = "Limits", CategoryWeight = 0, Default = 3 },
+		}, Category = "Limits", Default = 3 },
 	{ Name = "enable_lock_immunity", GuiText = "Lua Lock Immunity:", Type = "Combobox", Options = {
 			"Off",
 			"All Players",
 			"Permissions Based"
-		}, Category = "Immunity", CategoryWeight = 2, Default = 3, Incomplete = true },
+		}, Category = "Immunity", Default = 3, Incomplete = true },
 	{ Name = "enable_kill_immunity", GuiText = "Lua Kill Immunity:", Type = "Combobox", Options = {
 			"Off",
 			"All Players",
 			"Permissions Based"
-		}, Category = "Immunity", CategoryWeight = 2, Default = 3, Incomplete = true },
+		}, Category = "Immunity", Default = 3, Incomplete = true },
 	{ Name = "enable_kick_immunity", GuiText = "Lua Kick Immunity:", Type = "Combobox", Options = {
 			"Off",
 			"All Players",
 			"Permissions Based"
-		}, Category = "Immunity", CategoryWeight = 2, Default = 3, Incomplete = true },
+		}, Category = "Immunity", Default = 3, Incomplete = true },
 	{ Name = "disable_fall_damage", GuiText = "Fall Damage Modifier:", Type = "Combobox", Options = {
 			"Off",
 			"All Players",
 			"All Players suffer reduced damage",
 			"Permissions Based"
-		}, Category = "Limits", CategoryWeight = 0, Default = 4 },
-	{ Name = "disable_owner_nag", GuiText = "Disable 'No owner detected' nag at startup", Type = "Checkbox", Category = "Misc", CategoryWeight = 50, Default = false, Incomplete = true },
-	--{ Module = "deathnotice", Name = "enabled", GuiText = "Enable Kill Notices", Type = "Checkbox", Category = "Misc", CategoryWeight = 50, Default = true },
+		}, Category = "Limits", Default = 4 },
+	{ Name = "disable_owner_nag", GuiText = "Disable 'No owner detected' nag at startup", Type = "Checkbox", Category = "Misc", Default = false, Incomplete = true },
 	{ Name = "player_collision_mode", GuiText = "Player Collisions Mode (experimental):", Type = "Combobox", Options = {
 			"No change",
 			"Always disable collisions",
 			"Permissions Based"
-		}, Category = "Misc", CategoryWeight = 50, Default = 3, Incomplete = true },
+		}, Category = "Misc", Default = 3, Incomplete = true },
 	{ Name = "pvp_mode", GuiText = "PVP Mode: ", Type = "Combobox", Options = {
 			"Allow all PvP",
 			"Disable all PvP",
 			"Permissions Based"
-		}, Category = "Limits", CategoryWeight = 0, Default = 3 }
-	--{ Module = "scoreboard", Name = "scoreboard_enabled", GuiText = "Enable Vermilion Scoreboard", Type = "Checkbox", Category = "Misc", CategoryWeight = 50, Default = true },
-	--{ Module = "gm_customiser", Name = "enabled", GuiText = "Automatically adapt settings to suit supported gamemodes", Type = "Checkbox", Category = "Misc", CategoryWeight = 50, Default = true },
-	--{ Name = "respect_rank_order", GuiText = "Enable Rank Hierarchy-Based Immunity", Type = "Checkbox", Category = "Immunity", CategoryWeight = 2, Default = true }
+		}, Category = "Limits", Default = 3 }
 }
 
 function MODULE:AddCategory(name, order)
@@ -275,9 +195,356 @@ function MODULE:AddCategory(name, order)
 	table.insert(categories, { Name = name, Order = order })
 end
 
-function MODULE:AddOption(mod, name, guitext, typ, category, categoryweight, defaultval, permission, otherdat)
+function MODULE:AddOption(mod, name, guitext, typ, category, defaultval, permission, otherdat)
 	otherdat = otherdat or {}
-	table.insert(options, table.Merge({ Module = mod, Name = name, GuiText = guitext, Type = typ, Category = category, CategoryWeight = categoryweight, Default = defaultval, Permission = permission}, otherdat))
+	table.insert(options, table.Merge({ Module = mod, Name = name, GuiText = guitext, Type = typ, Category = category, Default = defaultval, Permission = permission}, otherdat))
+end
+
+
+function MODULE:RegisterChatCommands()
+	
+	Vermilion:AddChatCommand({
+		Name = "motd",
+		Description = "Request the MOTD again.",
+		Function = function(sender, text, log, glog)
+			MODULE:NetStart("VRequestMOTD")
+			net.WriteString(MODULE:GetData("motd", "", true))
+			net.WriteInt(MODULE:GetData("motd_type", 1, true), 32)
+			net.Send(sender)
+		end
+	})
+	
+	Vermilion:AddChatCommand({
+		Name = "noclip",
+		Description = "Toggles noclip for the player",
+		Syntax = "[player] => [value]",
+		CanMute = true,
+		Permissions = { "setnoclip" },
+		Predictor = function(pos, current, all, vplayer)
+			if(pos == 1) then
+				return VToolkit.MatchPlayerPart(current)
+			end
+		end,
+		Function = function(sender, text, log, glog)
+			local target = sender
+			local state = nil
+			
+			if(table.Count(text) > 0) then
+				if(Vermilion:HasPermission(sender, "setnoclip_others")) then
+					target = VToolkit.LookupPlayer(text[1])
+				end
+				if(table.Count(text) > 1) then
+					state = tobool(text[2])
+				end
+			end
+			
+			if(not IsValid(target)) then
+				log(Vermilion:TranslateStr("no_users", nil, sender), NOTIFY_ERROR)
+				return
+			end
+			if(Vermilion:GetUser(target):IsImmune(sender)) then
+				log(Vermilion:TranslateStr("player_immune", { target:GetName() }, sender), NOTIFY_ERROR)
+				return
+			end
+			if(state == nil) then
+				if(MODULE:GetData("NoclipPerPlayer", {}, true)[target:SteamID()] == nil) then MODULE:GetData("NoclipPerPlayer", {}, true)[target:SteamID()] = false end
+				MODULE:GetData("NoclipPerPlayer", {}, true)[target:SteamID()] = not MODULE:GetData("NoclipPerPlayer", {}, true)[target:SteamID()]
+			else
+				MODULE:GetData("NoclipPerPlayer", {}, true)[target:SteamID()] = state
+			end
+			if(MODULE:GetData("NoclipPerPlayer", {}, true)[target:SteamID()]) then
+				if(sender == target) then
+					glog(sender:GetName() .. " switched noclip on for him/herself.")
+				else
+					glog(sender:GetName() .. " switched noclip on for " .. target:GetName())
+				end
+			else
+				if(sender == target) then
+					glog(sender:GetName() .. " switched noclip off for him/herself.")
+				else
+					glog(sender:GetName() .. " switched noclip off for " .. target:GetName())
+				end
+			end
+		end,
+		AllBroadcast = function(sender, text)
+			if(table.Count(text) > 1 and tobool(text[2]) != nil) then
+				local val = nil
+				if(tobool(text[2])) then
+					val = "on"
+				else
+					val = "off"
+				end
+				return sender:GetName() .. " switched noclip " .. val .. " for all players!"
+			end
+			return sender:GetName() .. " toggled the noclip state for all players!"
+		end
+	})
+	
+	Vermilion:AddChatCommand({
+		Name = "falldamage",
+		Description = "Toggles falldamage for the player",
+		Syntax = "[player] => [value]",
+		CanMute = true,
+		Permissions = { "setfalldamage" },
+		Predictor = function(pos, current, all, vplayer)
+			if(pos == 1) then
+				return VToolkit.MatchPlayerPart(current)
+			end
+		end,
+		Function = function(sender, text, log, glog)
+			local target = sender
+			local state = nil
+			
+			if(table.Count(text) > 0) then
+				if(Vermilion:HasPermission(sender, "setfalldamage_others")) then
+					target = VToolkit.LookupPlayer(text[1])
+				end
+				if(table.Count(text) > 1) then
+					state = tobool(text[2])
+				end
+			end
+			
+			if(not IsValid(target)) then
+				log(Vermilion:TranslateStr("no_users", nil, sender), NOTIFY_ERROR)
+				return
+			end
+			if(Vermilion:GetUser(target):IsImmune(sender)) then
+				log(Vermilion:TranslateStr("player_immune", { target:GetName() }, sender), NOTIFY_ERROR)
+				return
+			end
+			if(state == nil) then
+				if(MODULE:GetData("FallDamagePerPlayer", {}, true)[target:SteamID()] == nil) then MODULE:GetData("FallDamagePerPlayer", {}, true)[target:SteamID()] = false end
+				MODULE:GetData("FallDamagePerPlayer", {}, true)[target:SteamID()] = not MODULE:GetData("FallDamagePerPlayer", {}, true)[target:SteamID()]
+			else
+				MODULE:GetData("FallDamagePerPlayer", {}, true)[target:SteamID()] = state
+			end
+			if(MODULE:GetData("FallDamagePerPlayer", {}, true)[target:SteamID()]) then
+				if(sender == target) then
+					glog(sender:GetName() .. " switched falldamage on for him/herself.")
+				else
+					glog(sender:GetName() .. " switched falldamage on for " .. target:GetName())
+				end
+			else
+				if(sender == target) then
+					glog(sender:GetName() .. " switched falldamage off for him/herself.")
+				else
+					glog(sender:GetName() .. " switched falldamage off for " .. target:GetName())
+				end
+			end
+		end,
+		AllBroadcast = function(sender, text)
+			if(table.Count(text) > 1 and tobool(text[2]) != nil) then
+				local val = nil
+				if(tobool(text[2])) then
+					val = "on"
+				else
+					val = "off"
+				end
+				return sender:GetName() .. " switched falldamage " .. val .. " for all players!"
+			end
+			return sender:GetName() .. " toggled the falldamage state for all players!"
+		end
+	})
+	
+	
+	Vermilion:AddChatCommand({
+		Name = "damagemode",
+		Description = "Toggles damage for the player",
+		Syntax = "[player] => [value]",
+		CanMute = true,
+		Permissions = { "setdamage" },
+		Predictor = function(pos, current, all, vplayer)
+			if(pos == 1) then
+				return VToolkit.MatchPlayerPart(current)
+			end
+		end,
+		Function = function(sender, text, log, glog)
+			local target = sender
+			local state = nil
+			
+			if(table.Count(text) > 0) then
+				if(Vermilion:HasPermission(sender, "setdamage_others")) then
+					target = VToolkit.LookupPlayer(text[1])
+				end
+				if(table.Count(text) > 1) then
+					state = tobool(text[2])
+				end
+			end
+			
+			if(not IsValid(target)) then
+				log(Vermilion:TranslateStr("no_users", nil, sender), NOTIFY_ERROR)
+				return
+			end
+			if(Vermilion:GetUser(target):IsImmune(sender)) then
+				log(Vermilion:TranslateStr("player_immune", { target:GetName() }, sender), NOTIFY_ERROR)
+				return
+			end
+			if(state == nil) then
+				if(MODULE:GetData("DisableDamagePerPlayer", {}, true)[target:SteamID()] == nil) then MODULE:GetData("DisableDamagePerPlayer", {}, true)[target:SteamID()] = false end
+				MODULE:GetData("DisableDamagePerPlayer", {}, true)[target:SteamID()] = not MODULE:GetData("DisableDamagePerPlayer", {}, true)[target:SteamID()]
+			else
+				MODULE:GetData("DisableDamagePerPlayer", {}, true)[target:SteamID()] = state
+			end
+			if(MODULE:GetData("DisableDamagePerPlayer", {}, true)[target:SteamID()]) then
+				if(sender == target) then
+					glog(sender:GetName() .. " switched damage on for him/herself.")
+				else
+					glog(sender:GetName() .. " switched damage on for " .. target:GetName())
+				end
+			else
+				if(sender == target) then
+					glog(sender:GetName() .. " switched damage off for him/herself.")
+				else
+					glog(sender:GetName() .. " switched damage off for " .. target:GetName())
+				end
+			end
+		end,
+		AllBroadcast = function(sender, text)
+			if(table.Count(text) > 1 and tobool(text[2]) != nil) then
+				local val = nil
+				if(tobool(text[2])) then
+					val = "on"
+				else
+					val = "off"
+				end
+				return sender:GetName() .. " switched damage " .. val .. " for all players!"
+			end
+			return sender:GetName() .. " toggled the damage state for all players!"
+		end
+	})
+	
+	Vermilion:AddChatCommand({
+		Name = "flashlight",
+		Description = "Toggles flashlight for the player",
+		Syntax = "[player] => [value]",
+		CanMute = true,
+		Permissions = { "setflashlight" },
+		Predictor = function(pos, current, all, vplayer)
+			if(pos == 1) then
+				return VToolkit.MatchPlayerPart(current)
+			end
+		end,
+		Function = function(sender, text, log, glog)
+			local target = sender
+			local state = nil
+			
+			if(table.Count(text) > 0) then
+				if(Vermilion:HasPermission(sender, "setflashlight_others")) then
+					target = VToolkit.LookupPlayer(text[1])
+				end
+				if(table.Count(text) > 1) then
+					state = tobool(text[2])
+				end
+			end
+			
+			if(not IsValid(target)) then
+				log(Vermilion:TranslateStr("no_users", nil, sender), NOTIFY_ERROR)
+				return
+			end
+			if(Vermilion:GetUser(target):IsImmune(sender)) then
+				log(Vermilion:TranslateStr("player_immune", { target:GetName() }, sender), NOTIFY_ERROR)
+				return
+			end
+			if(state == nil) then
+				if(MODULE:GetData("FlashlightPerPlayer", {}, true)[target:SteamID()] == nil) then MODULE:GetData("FlashlightPerPlayer", {}, true)[target:SteamID()] = false end
+				MODULE:GetData("FlashlightPerPlayer", {}, true)[target:SteamID()] = not MODULE:GetData("FlashlightPerPlayer", {}, true)[target:SteamID()]
+			else
+				MODULE:GetData("FlashlightPerPlayer", {}, true)[target:SteamID()] = state
+			end
+			if(MODULE:GetData("FlashlightPerPlayer", {}, true)[target:SteamID()]) then
+				if(sender == target) then
+					glog(sender:GetName() .. " switched the flashlight on for him/herself.")
+				else
+					glog(sender:GetName() .. " switched the flashlight on for " .. target:GetName())
+				end
+			else
+				if(sender == target) then
+					glog(sender:GetName() .. " switched the flashlight off for him/herself.")
+				else
+					glog(sender:GetName() .. " switched the flashlight off for " .. target:GetName())
+				end
+			end
+		end,
+		AllBroadcast = function(sender, text)
+			if(table.Count(text) > 1 and tobool(text[2]) != nil) then
+				local val = nil
+				if(tobool(text[2])) then
+					val = "on"
+				else
+					val = "off"
+				end
+				return sender:GetName() .. " switched the flashlight " .. val .. " for all players!"
+			end
+			return sender:GetName() .. " toggled the flashlight state for all players!"
+		end
+	})
+	
+	Vermilion:AddChatCommand({
+		Name = "uammo",
+		Description = "Toggles unlimited ammo for the player",
+		Syntax = "[player] => [value]",
+		CanMute = true,
+		Permissions = { "setuammo" },
+		Predictor = function(pos, current, all, vplayer)
+			if(pos == 1) then
+				return VToolkit.MatchPlayerPart(current)
+			end
+		end,
+		Function = function(sender, text, log, glog)
+			local target = sender
+			local state = nil
+			
+			if(table.Count(text) > 0) then
+				if(Vermilion:HasPermission(sender, "setuammo_others")) then
+					target = VToolkit.LookupPlayer(text[1])
+				end
+				if(table.Count(text) > 1) then
+					state = tobool(text[2])
+				end
+			end
+			
+			if(not IsValid(target)) then
+				log(Vermilion:TranslateStr("no_users", nil, sender), NOTIFY_ERROR)
+				return
+			end
+			if(Vermilion:GetUser(target):IsImmune(sender)) then
+				log(Vermilion:TranslateStr("player_immune", { target:GetName() }, sender), NOTIFY_ERROR)
+				return
+			end
+			if(state == nil) then
+				if(MODULE:GetData("AmmoPerPlayer", {}, true)[target:SteamID()] == nil) then MODULE:GetData("AmmoPerPlayer", {}, true)[target:SteamID()] = false end
+				MODULE:GetData("AmmoPerPlayer", {}, true)[target:SteamID()] = not MODULE:GetData("AmmoPerPlayer", {}, true)[target:SteamID()]
+			else
+				MODULE:GetData("AmmoPerPlayer", {}, true)[target:SteamID()] = state
+			end
+			if(MODULE:GetData("AmmoPerPlayer", {}, true)[target:SteamID()]) then
+				if(sender == target) then
+					glog(sender:GetName() .. " switched unlimited ammo on for him/herself.")
+				else
+					glog(sender:GetName() .. " switched unlimited ammo on for " .. target:GetName())
+				end
+			else
+				if(sender == target) then
+					glog(sender:GetName() .. " switched unlimited ammo off for him/herself.")
+				else
+					glog(sender:GetName() .. " switched unlimited ammo off for " .. target:GetName())
+				end
+			end
+		end,
+		AllBroadcast = function(sender, text)
+			if(table.Count(text) > 1 and tobool(text[2]) != nil) then
+				local val = nil
+				if(tobool(text[2])) then
+					val = "on"
+				else
+					val = "off"
+				end
+				return sender:GetName() .. " switched unlimited ammo " .. val .. " for all players!"
+			end
+			return sender:GetName() .. " toggled the unlimited ammo state for all players!"
+		end
+	})
+	
 end
 
 function MODULE:InitServer()
@@ -287,7 +554,11 @@ function MODULE:InitServer()
 		for i,k in pairs(options) do
 			local val = nil
 			if(k.Module != nil) then
-				val = Vermilion:GetModuleData(k.Module, k.Name, k.Default)
+				if(k.Module == "Vermilion") then
+					val = Vermilion:GetData(k.Name, k.Default)
+				else
+					val = Vermilion:GetModuleData(k.Module, k.Name, k.Default)
+				end
 			else
 				val = MODULE:GetData(k.Name, k.Default, false)
 			end
@@ -303,11 +574,61 @@ function MODULE:InitServer()
 			local data = net.ReadTable()
 			for i,k in pairs(data) do
 				if(k.Module != nil) then
-					Vermilion:SetModuleData(k.Module, k.Name, k.Value)
+					if(k.Module == "Vermilion") then
+						Vermilion:SetData(k.Name, k.Value)
+					else
+						Vermilion:SetModuleData(k.Module, k.Name, k.Value)
+					end
 				else
 					self:SetData(k.Name, k.Value)
 				end
 			end
+		end
+	end)
+	
+	self:NetHook("VUpdateMOTD", function(vplayer)
+		if(Vermilion:HasPermission(vplayer, "change_motd")) then
+			MODULE:SetData("motd", net.ReadString())
+		end
+	end)
+	
+	self:NetHook("VUpdateMOTDSettings", function(vplayer)
+		if(Vermilion:HasPermission(vplayer, "change_motd")) then
+			MODULE:SetData("motd_type", net.ReadInt(32))
+		end
+	end)
+	
+	self:NetHook("VGetMOTDProperties", function(vplayer)
+		MODULE:NetStart("VGetMOTDProperties")
+		net.WriteString(MODULE:GetData("motd", "", true))
+		net.WriteInt(MODULE:GetData("motd_type", 1, true), 32)
+		net.Send(vplayer)
+	end)
+	
+	self:NetHook("VRequestMOTD", function(vplayer)
+		MODULE:NetStart("VRequestMOTD")
+		net.WriteString(MODULE:GetData("motd", "", true))
+		net.WriteInt(MODULE:GetData("motd_type", 1, true), 32)
+		net.Send(vplayer)
+	end)
+	
+	self:NetHook("VGetCommandMuting", function(vplayer)
+		MODULE:NetStart("VGetCommandMuting")
+		local tab = {}
+		for i,k in pairs(Vermilion.ChatCommands) do
+			if(not k.CanMute) then continue end
+			table.insert(tab, { Name = i, Value = Vermilion:GetData("muted_commands", {}, true)[i] != false })
+		end
+		net.WriteTable(tab)
+		net.Send(vplayer)
+	end)
+	
+	self:NetHook("VSetCommandMuting", function(vplayer)
+		if(Vermilion:HasPermission(vplayer, "manage_server")) then
+			local typ = net.ReadString()
+			local enabled = net.ReadBoolean()
+			print("Setting " .. typ .. " to " .. tostring(enabled))
+			Vermilion:GetData("muted_commands", {}, true)[typ] = enabled
 		end
 	end)
 	
@@ -349,7 +670,7 @@ function MODULE:InitServer()
 					return true
 				end
 				if(mode == 4) then
-					return Vermilion:HasPermission(ply, "noclip")
+					return Vermilion:HasPermission(ply, "noclip") and MODULE:GetData("NoclipPerPlayer", {}, true)[ply:SteamID()] != false
 				end
 			end
 		end
@@ -366,7 +687,7 @@ function MODULE:InitServer()
 					return true
 				end
 				if(mode == 4) then
-					return Vermilion:HasPermission(ply, "enable_flashlight")
+					return Vermilion:HasPermission(ply, "enable_flashlight") and MODULE:GetData("FlashlightPerPlayer", {}, true)[ply:SteamID()] != false
 				end
 			end
 		end
@@ -380,8 +701,8 @@ function MODULE:InitServer()
 			elseif(mode == 3) then
 				return 5 -- TODO: make this customisable
 			elseif(mode == 4) then
-				if(Vermilion:HasPermission(ply, "no_fall_damage")) then return 0 end
-				if(Vermilion:HasPermission(ply, "reduced_fall_damage")) then return 5 end
+				if(Vermilion:HasPermission(ply, "no_fall_damage") and MODULE:GetData("FallDamagePerPlayer", {}, true)[ply:SteamID()] != false) then return 0 end
+				if(Vermilion:HasPermission(ply, "reduced_fall_damage") and MODULE:GetData("FallDamagePerPlayer", {}, true)[ply:SteamID()] != false) then return 5 end
 			end
 		end
 	end)
@@ -396,7 +717,7 @@ function MODULE:InitServer()
 					dmg:ScaleDamage(0)
 					return dmg
 				elseif(damageMode == 3) then
-					if(Vermilion:HasPermission(victim, "no_damage")) then
+					if(Vermilion:HasPermission(victim, "no_damage") and MODULE:GetData("DisableDamagePerPlayer", {}, true)[victim:SteamID()] != false) then
 						dmg:ScaleDamage(0)
 						return dmg
 					end
@@ -425,7 +746,7 @@ function MODULE:InitServer()
 	timer.Create("Vermilion_UnlimitedAmmo", 1/2, 0, function()
 		if(MODULE:GetData("unlimited_ammo", 3) == 1) then return end
 		for i,ply in pairs(VToolkit.GetValidPlayers()) do
-			if(Vermilion:HasPermission(ply, "unlimited_ammo") or MODULE:GetData("unlimited_ammo", 3) == 2) then
+			if((Vermilion:HasPermission(ply, "unlimited_ammo") and MODULE:GetData("AmmoPerPlayer", {}, true)[ply:SteamID()] != false) or MODULE:GetData("unlimited_ammo", 3) == 2) then
 				if(IsValid(ply:GetActiveWeapon())) then
 					local twep = ply:GetActiveWeapon()
 					if(twep:Clip1() < 500) then twep:SetClip1(500) end
@@ -450,30 +771,19 @@ function MODULE:InitServer()
 			elseif(mode == 4) then
 				if(not Vermilion:HasPermission(talker, "use_voip")) then return false end
 				if(not Vermilion:HasPermission(listener, "hear_voip")) then return false end
-				return MODULE:CalcVoIPChannels(listener, talker, true)
 			end
 		end
 	end)
 	
-	function MODULE:CalcVoIPChannels(listener, talker, default)
-		if(IsValid(listener) and IsValid(talker)) then
-			local vListener = Vermilion:GetUser(listener)
-			local vTalker = Vermilion:GetUser(talker)
-			if(vListener.VoIPChannel == nil) then
-				vListener.VoIPChannel = "Default"
-			end
-			if(vTalker.VoIPChannel == nil) then
-				vTalker.VoIPChannel = "Default"
-			end
-			return vListener.VoIPChannel == vTalker.VoIPChannel
-		end
-		return default
-	end
-
-
 end
 
 function MODULE:InitClient()
+
+	self:AddHook("PlayerNoClip", function(vplayer, enabled)
+		if(enabled) then
+			return Vermilion:HasPermission("noclip")
+		end
+	end)
 
 	self:NetHook("VServerGetProperties", function()
 		MODULE.UpdatingGUI = true
@@ -489,12 +799,118 @@ function MODULE:InitClient()
 		MODULE.UpdatingGUI = false
 	end)
 	
+	self:NetHook("VGetMOTDProperties", function()
+		local panel = Vermilion.Menu.Pages["motd"].Panel
+		local text = net.ReadString()
+		local typ = net.ReadInt(32)
+		
+		panel.TypeCombo.Updating = true
+		panel.TypeCombo:ChooseOptionID(typ)
+		panel.TypeCombo.Updating = false
+		
+		panel.MOTDText:SetValue(text)
+		panel.UnsavedChanges = false
+	end)
+	
+	self:NetHook("VGetCommandMuting", function()
+		local data = net.ReadTable()
+		local panel = Vermilion.Menu.Pages["command_muting"].Panel
+		
+		if(table.Count(panel.Controls) > 0) then
+			for i,k in pairs(data) do
+				local control = panel.Controls[k.Name]
+				control.AllowUpdate = false
+				control:SetValue(k.Value)
+				control.AllowUpdate = true
+			end
+			return
+		end
+		
+		for i,k in pairs(data) do
+			local cb = VToolkit:CreateCheckBox(k.Name)
+			cb:SetParent(panel)
+			cb:Dock(TOP)
+			cb:DockMargin(10, 0, 10, 10)
+			
+			cb:SetParent(panel.Scroll)
+			cb:SetValue(k.Value)
+			panel.Controls[k.Name] = cb
+			cb.AllowUpdate = true
+			
+			function cb:OnChange()
+				if(not self.AllowUpdate) then return end
+				MODULE:NetStart("VSetCommandMuting")
+				net.WriteString(k.Name)
+				net.WriteBoolean(cb:GetChecked())
+				net.SendToServer()
+			end
+		end
+	end)
+	
 	self:AddHook(Vermilion.Event.CLIENT_GOT_RANKS, function()
 		for i,k in pairs(options) do
 			if(k.Permission != nil) then
 				k.Impl:SetEnabled(Vermilion:HasPermission(k.Permission))
 			end
 		end
+	end)
+	
+	function MODULE:DisplayMOTD(typ, text)
+		if(text == nil or text == "") then return end
+		if(typ == 1) then
+			for i,k in pairs(string.Split(text, "\n")) do
+				Vermilion:AddNotification(k)
+			end
+		elseif(typ == 2) then
+			local panel = VToolkit:CreateFrame(
+				{
+					['size'] = { 800, 600 },
+					['pos'] = { (ScrW() / 2) - 400, (ScrH() / 2) - 300 },
+					['closeBtn'] = true,
+					['draggable'] = true,
+					['title'] = "Vermilion - MOTD",
+					['bgBlur'] = true
+				}
+			)
+			local dhtml = vgui.Create("DHTML")
+			dhtml:SetHTML(text)
+			dhtml:Dock(FILL)
+			dhtml:SetParent(panel)
+			
+			panel:MakePopup()
+			panel:SetAutoDelete(true)
+		elseif(typ == 3) then
+			local panel = VToolkit:CreateFrame(
+				{
+					['size'] = { 800, 600 },
+					['pos'] = { (ScrW() / 2) - 400, (ScrH() / 2) - 300 },
+					['closeBtn'] = true,
+					['draggable'] = true,
+					['title'] = "Vermilion - MOTD",
+					['bgBlur'] = true
+				}
+			)
+			local dhtml = vgui.Create("DHTML")
+			dhtml:OpenURL(text)
+			dhtml:Dock(FILL)
+			dhtml:SetParent(panel)
+			
+			panel:MakePopup()
+			panel:SetAutoDelete(true)
+		end
+	end
+	
+	self:NetHook("VRequestMOTD", function()
+		local text = net.ReadString()
+		local typ = net.ReadInt(32)
+		
+		MODULE:DisplayMOTD(typ, text)
+	end)
+	
+	self:AddHook(Vermilion.Event.MOD_LOADED, function()		
+		timer.Simple(2, function()
+			MODULE:NetCommand("VRequestMOTD")
+		end)
 	end)
 
 		
@@ -668,8 +1084,7 @@ function MODULE:InitClient()
 			MODULE.UpdatingGUI = false
 		end,
 		Updater = function(panel)
-			MODULE:NetStart("VServerGetProperties")
-			net.SendToServer()
+			MODULE:NetCommand("VServerGetProperties")
 		end
 	})
 	
@@ -680,7 +1095,7 @@ function MODULE:InitClient()
 		Category = "server",
 		Size = { 500, 500 },
 		Conditional = function(vplayer)
-			return Vermilion:HasPermission("set_motd")
+			return Vermilion:HasPermission("change_motd")
 		end,
 		Builder = function(panel)
 			local motdtext = VToolkit:CreateTextbox("", panel)
@@ -688,31 +1103,71 @@ function MODULE:InitClient()
 			motdtext:SetPos(10, 10)
 			motdtext:SetSize(480, 400)
 			motdtext:SetParent(panel)
+			motdtext:SetUpdateOnType(true)
+			panel.MOTDText = motdtext
 			
-			local isURL = VToolkit:CreateCheckBox("MOTD Is URL")
-			isURL:SetPos(10, 420)
-			isURL:SetParent(panel)
-			isURL:SizeToContents()
+			panel.UnsavedChanges = false
 			
-			local isHTML = VToolkit:CreateCheckBox("MOTD is HTML")
-			isHTML:SetPos(10, 440)
-			isHTML:SetParent(panel)
-			isHTML:SizeToContents()
+			function motdtext:OnChange()
+				panel.UnsavedChanges = true
+			end
+			
+			local typCombo = VToolkit:CreateComboBox({
+				"Standard",
+				"HTML",
+				"URL"
+			}, 1)
+			typCombo:SetParent(panel)
+			typCombo:SetPos(10, 415)
+			typCombo:SetSize(200, 20)
+			typCombo.OnSelect = function(panel, index, value)
+				typCombo.VSelectedIndex = index
+				if(typCombo.VUpdating) then
+					return
+				end
+				MODULE:NetStart("VUpdateMOTDSettings")
+				net.WriteInt(index, 32)
+				net.SendToServer()
+			end
+			panel.TypeCombo = typCombo
 			
 			local motdVars = VToolkit:CreateButton("Show Variables", function()
 				
 			end)
-			motdVars:SetPos(370, 425)
+			motdVars:SetPos(370, 415)
 			motdVars:SetSize(120, 20)
 			motdVars:SetParent(panel)
 			
 			local preview = VToolkit:CreateButton("Preview", function()
-			
+				MODULE:DisplayMOTD(typCombo.VSelectedIndex, motdtext:GetValue())
 			end)
-			preview:SetPos(370, 455)
+			preview:SetPos(370, 445)
 			preview:SetSize(120, 20)
 			preview:SetParent(panel)
 			
+			local save = VToolkit:CreateButton("Save Changes...", function()
+				MODULE:NetStart("VUpdateMOTD")
+				net.WriteString(motdtext:GetValue())
+				net.SendToServer()
+				panel.UnsavedChanges = false
+			end)
+			save:SetPos(370, 475)
+			save:SetSize(120, 20)
+			save:SetParent(panel)
+			
+			MODULE:AddHook(Vermilion.Event.MENU_CLOSING, function()
+				if(panel.UnsavedChanges) then
+					VToolkit:CreateConfirmDialog("There are unsaved changes to the MOTD! Really close?", function()
+						Vermilion.Menu:Close(true)
+						panel.UnsavedChanges = false
+					end, { Confirm = "Yes", Deny = "No", Default = false })
+					return false
+				end
+			end)
+			
+		end,
+		Updater = function(panel)
+			MODULE:NetCommand("VGetMOTDProperties")
 		end
 	})
 	
@@ -749,6 +1204,35 @@ function MODULE:InitClient()
 			label:SizeToContents()
 			label:SetPos((panel:GetWide() - label:GetWide()) / 2, (panel:GetTall() - label:GetTall()) / 2)
 			label:SetParent(panel)
+		end
+	})
+	
+	Vermilion.Menu:AddPage({
+		ID = "command_muting",
+		Name = "Command Muting",
+		Order = 4,
+		Category = "server",
+		Size = { 600, 560 },
+		Conditional = function(vplayer)
+			return Vermilion:HasPermission("manage_server")
+		end,
+		Builder = function(panel)
+			local label = VToolkit:CreateLabel("Control which commands can produce global output, i.e. \"Ned cleared the decals.\". If a command isn't on this list, it doesn't produce global output.")
+			label:SetParent(panel)
+			label:SetWrap(true)
+			label:SetTall(label:GetTall() * 2)
+			label:Dock(TOP)
+			label:DockMargin(10, 10, 10, 20)
+			
+			panel.Controls = {}
+			
+			local scroll = vgui.Create("DScrollPanel")
+			scroll:Dock(FILL)
+			scroll:SetParent(panel)
+			panel.Scroll = scroll
+		end,
+		Updater = function(panel)
+			MODULE:NetCommand("VGetCommandMuting")
 		end
 	})
 end

@@ -23,7 +23,8 @@ MODULE.ID = "rank_editor"
 MODULE.Description = "Edits ranks"
 MODULE.Author = "Ned"
 MODULE.Permissions = {
-	"manage_ranks"
+	"manage_ranks",
+	"identify_as_admin"
 }
 MODULE.NetworkStrings = {
 	"VGetPermissions",
@@ -37,8 +38,110 @@ MODULE.NetworkStrings = {
 	"VSetRankDefault",
 	"VChangeRankColour",
 	"VChangeRankIcon",
-	"VAssignRank"
+	"VAssignRank",
+	"VAssignParent"
 }
+MODULE.DefaultPermissions = {
+	{ Name = "admin", Permissions = {
+			"identify_as_admin"
+		}
+	}
+}
+
+function MODULE:RegisterChatCommands()
+	Vermilion:AddChatCommand({
+		Name = "setrank",
+		Description = "Set a player's rank",
+		Syntax = "<player> <rank>",
+		CanMute = true,
+		Permissions = { "manage_ranks" },
+		AllValid = {
+			{ Size = nil, Indexes = { 1 } }
+		},
+		Predictor = function(pos, current, all, vplayer)
+			if(pos == 1) then
+				return VToolkit.MatchPlayerPart(current)
+			elseif(pos == 2) then
+				local tab = {}
+				for i,k in pairs(Vermilion.Data.Ranks) do
+					if(string.find(string.lower(k.Name), string.lower(current))) then
+						table.insert(tab, k.Name)
+					end
+				end
+				return tab
+			end
+		end,
+		Function = function(sender, text, log, glog)
+			if(table.Count(text) < 2) then
+				log(Vermilion:TranslateStr("bad_syntax", nil, sender), NOTIFY_ERROR)
+				return
+			end
+			local target = VToolkit.LookupPlayer(text[1])
+			if(not IsValid(target)) then
+				log(Vermilion:TranslateStr("no_users", nil, sender), NOTIFY_ERROR)
+				return
+			end
+			if(Vermilion:GetRank(text[2]) == nil) then
+				log(Vermilion:TranslateStr("no_rank", nil, sender), NOTIFY_ERROR)
+				return false
+			end
+			local promotion = true
+			if(Vermilion:GetUser(target):GetRank():GetImmunity() < Vermilion:GetRank(text[2]):GetImmunity()) then promotion = false end
+			Vermilion:GetUser(target):SetRank(text[2])
+			if(promotion) then
+				glog(sender:GetName() .. " has promoted " .. target:GetName() .. " to " .. text[2])
+			else
+				glog(sender:GetName() .. " has demoted " .. target:GetName() .. " to " .. text[2])
+			end
+		end,
+		AllBroadcast = function(sender, text)
+			return sender:GetName() .. " has moved everybody to the " .. text[2] .. " rank."
+		end
+	})
+	
+	Vermilion:AddChatCommand({
+		Name = "getrank",
+		Description = "Retrieves the rank of a player.",
+		Syntax = "[player]",
+		Predictor = function(pos, current, all, vplayer)
+			if(pos == 1) then
+				return VToolkit.MatchPlayerPart(current)
+			end
+		end,
+		Function = function(sender, text, log, glog)
+			local target = sender
+			if(table.Count(text) > 0) then
+				target = VToolkit.LookupPlayer(text[1])
+			end
+			if(not IsValid(target)) then
+				log(Vermilion:TranslateStr("no_users", nil, sender), NOTIFY_ERROR)
+				return
+			end
+			if(target == sender) then
+				log("Your rank is ".. Vermilion:GetUser(target):GetRankName())
+			else
+				log(target:GetName() .. "'s rank is " .. Vermilion:GetUser(target):GetRankName())
+			end
+		end
+	})
+	
+	
+end
+
+function MODULE:InitShared()
+	local meta = FindMetaTable("Player")
+
+	function meta:IsAdmin()
+		if(CLIENT) then
+			if(self != LocalPlayer()) then
+				return false
+			end
+			return Vermilion:HasPermission("identify_as_admin")
+		end
+		return Vermilion:HasPermission(self, "identify_as_admin")
+	end
+	
+end
 
 function MODULE:InitServer()
 	
@@ -146,6 +249,18 @@ function MODULE:InitServer()
 		end
 	end)
 	
+	self:NetHook("VAssignParent", function(vplayer)
+		if(Vermilion:HasPermission(vplayer, "manage_ranks")) then
+			local trank = Vermilion:GetRank(net.ReadString())
+			local proposedrank = net.ReadString()
+			if(proposedrank == "nil") then
+				trank:SetParent(nil)
+				return
+			end
+			trank:SetParent(Vermilion:GetRank(proposedrank))
+		end
+	end)
+	
 end
 
 function MODULE:InitClient()
@@ -189,14 +304,23 @@ function MODULE:InitClient()
 			Name = "Rank Editor",
 			Order = 0,
 			Category = "ranks",
-			Size = { 600, 560 },
+			Size = { 700, 560 },
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_ranks")
 			end,
 			Builder = function(panel)
 				local rankList = nil
+				local addRank = nil
+				local delRank = nil
+				local renameRank = nil
+				local moveUp = nil
+				local moveDown = nil
+				local setDefault = nil
+				local setColour = nil
+				local setIcon = nil
+				local setParent = nil
 				
-				local addRank = VToolkit:CreateButton("Add", function()
+				addRank = VToolkit:CreateButton("Add", function()
 					VToolkit:CreateTextInput("Enter the name for the new rank:", function(text)
 						local has = false
 						for i,k in pairs(rankList:GetLines()) do
@@ -215,9 +339,10 @@ function MODULE:InitClient()
 						VToolkit:CreateDialog("Success", "Rank created!")
 					end)
 				end)
-				addRank:SetPos(320, 30)
-				addRank:SetSize(panel:GetWide() - 330, 30)
+				addRank:SetPos(panel:GetWide() - 285, 30)
+				addRank:SetSize(panel:GetWide() - addRank:GetX() - 5, 30)
 				addRank:SetParent(panel)
+				panel.addRank = addRank
 				
 				local addImg = vgui.Create("DImage")
 				addImg:SetImage("icon16/add.png")
@@ -225,7 +350,7 @@ function MODULE:InitClient()
 				addImg:SetParent(addRank)
 				addImg:SetPos(10, (addRank:GetTall() - 16) / 2)
 				
-				local delRank = VToolkit:CreateButton("Delete", function()
+				delRank = VToolkit:CreateButton("Delete", function()
 					local rnk = rankList:GetSelected()[1]
 					if(not rnk.Protected) then
 						VToolkit:CreateConfirmDialog("Really delete the rank \"" .. rnk:GetValue(1) .. "\"?", function()
@@ -233,15 +358,24 @@ function MODULE:InitClient()
 							net.WriteString(rnk:GetValue(1))
 							net.SendToServer()
 							VToolkit:CreateDialog("Success", "Rank deleted!")
-						end)
+							delRank:SetDisabled(true)
+							renameRank:SetDisabled(true)
+							moveUp:SetDisabled(true)
+							moveDown:SetDisabled(true)
+							setDefault:SetDisabled(true)
+							setColour:SetDisabled(true)
+							setIcon:SetDisabled(true)
+							setParent:SetDisabled(true)
+						end, { Confirm = "Yes", Deny = "No", Default = false })
 					else
 						VToolkit:CreateErrorDialog("This is a protected rank!")
 					end
 				end)
-				delRank:SetPos(320, 70)
-				delRank:SetSize(panel:GetWide() - 330, 30)
+				delRank:SetPos(panel:GetWide() - 285, 70)
+				delRank:SetSize(panel:GetWide() - delRank:GetX() - 5, 30)
 				delRank:SetParent(panel)
 				delRank:SetDisabled(true)
+				panel.delRank = delRank
 				
 				local remImg = vgui.Create("DImage")
 				remImg:SetImage("icon16/delete.png")
@@ -249,7 +383,7 @@ function MODULE:InitClient()
 				remImg:SetParent(delRank)
 				remImg:SetPos(10, (delRank:GetTall() - 16) / 2)
 				
-				local renameRank = VToolkit:CreateButton("Rename", function()
+				renameRank = VToolkit:CreateButton("Rename", function()
 					local rnk = rankList:GetSelected()[1]
 					if(not rnk.Protected) then
 						VToolkit:CreateTextInput("Enter the new name for the \"" .. rnk:GetValue(1) .. "\" rank:", function(text)
@@ -274,10 +408,11 @@ function MODULE:InitClient()
 						VToolkit:CreateErrorDialog("This is a protected rank!")
 					end
 				end)
-				renameRank:SetPos(320, 110)
-				renameRank:SetSize(panel:GetWide() - 330, 30)
+				renameRank:SetPos(panel:GetWide() - 285, 110)
+				renameRank:SetSize(panel:GetWide() - renameRank:GetX() - 5, 30)
 				renameRank:SetParent(panel)
 				renameRank:SetDisabled(true)
+				panel.renameRank = renameRank
 				
 				local renImg = vgui.Create("DImage")
 				renImg:SetImage("icon16/textfield_rename.png")
@@ -285,7 +420,7 @@ function MODULE:InitClient()
 				renImg:SetParent(renameRank)
 				renImg:SetPos(10, (renameRank:GetTall() - 16) / 2)
 				
-				local moveUp = VToolkit:CreateButton("Move Up", function()
+				moveUp = VToolkit:CreateButton("Move Up", function()
 					local rnk = rankList:GetSelected()[1]
 					if(not rnk.Protected) then
 						if(rnk:GetID() == 2) then
@@ -300,10 +435,11 @@ function MODULE:InitClient()
 						VToolkit:CreateErrorDialog("This is a protected rank!")
 					end
 				end)
-				moveUp:SetPos(320, 150)
-				moveUp:SetSize(panel:GetWide() - 330, 30)
+				moveUp:SetPos(panel:GetWide() - 285, 150)
+				moveUp:SetSize(panel:GetWide() - moveUp:GetX() - 5, 30)
 				moveUp:SetParent(panel)
 				moveUp:SetDisabled(true)
+				panel.moveUp = moveUp
 				
 				local upImg = vgui.Create("DImage")
 				upImg:SetImage("icon16/arrow_up.png")
@@ -311,7 +447,7 @@ function MODULE:InitClient()
 				upImg:SetParent(moveUp)
 				upImg:SetPos(10, (moveUp:GetTall() - 16) / 2)
 				
-				local moveDown = VToolkit:CreateButton("Move Down", function()
+				moveDown = VToolkit:CreateButton("Move Down", function()
 					local rnk = rankList:GetSelected()[1]
 					if(not rnk.Protected) then
 						if(rnk:GetID() == table.Count(rankList:GetLines())) then
@@ -326,10 +462,11 @@ function MODULE:InitClient()
 						VToolkit:CreateErrorDialog("This is a protected rank!")
 					end
 				end)
-				moveDown:SetPos(320, 190)
-				moveDown:SetSize(panel:GetWide() - 330, 30)
+				moveDown:SetPos(panel:GetWide() - 285, 190)
+				moveDown:SetSize(panel:GetWide() - moveDown:GetX() - 5, 30)
 				moveDown:SetParent(panel)
 				moveDown:SetDisabled(true)
+				panel.moveDown = moveDown
 				
 				local downImg = vgui.Create("DImage")
 				downImg:SetImage("icon16/arrow_down.png")
@@ -337,7 +474,7 @@ function MODULE:InitClient()
 				downImg:SetParent(moveDown)
 				downImg:SetPos(10, (moveDown:GetTall() - 16) / 2)
 				
-				local setDefault = VToolkit:CreateButton("Set As Default", function()
+				setDefault = VToolkit:CreateButton("Set As Default", function()
 					local rnk = rankList:GetSelected()[1]
 					local cont = function()
 						MODULE:NetStart("VSetRankDefault")
@@ -346,15 +483,16 @@ function MODULE:InitClient()
 						VToolkit:CreateDialog("Success", "Rank set as default!")
 					end
 					if(rnk.Protected) then
-						VToolkit:CreateConfirmDialog("Are you sure you want to set a protected rank as the default rank?", cont)
+						VToolkit:CreateConfirmDialog("Are you sure you want to set a protected rank as the default rank?", cont, { Confirm = "Yes", Deny = "No", Default = false })
 					else
 						cont()
 					end
 				end)
-				setDefault:SetPos(320, 230)
-				setDefault:SetSize(panel:GetWide() - 330, 30)
+				setDefault:SetPos(panel:GetWide() - 285, 230)
+				setDefault:SetSize(panel:GetWide() - setDefault:GetX() - 5, 30)
 				setDefault:SetParent(panel)
 				setDefault:SetDisabled(true)
+				panel.setDefault = setDefault
 				
 				local defImg = vgui.Create("DImage")
 				defImg:SetImage("icon16/accept.png")
@@ -362,7 +500,7 @@ function MODULE:InitClient()
 				defImg:SetParent(setDefault)
 				defImg:SetPos(10, (setDefault:GetTall() - 16) / 2)
 				
-				local setColour = VToolkit:CreateButton("Set Colour", function()
+				setColour = VToolkit:CreateButton("Set Colour", function()
 					local frame = VToolkit:CreateFrame({
 						size = { 400, 270 },
 						pos = { (ScrW() - 400) / 2, (ScrH() - 270) / 2 },
@@ -401,10 +539,11 @@ function MODULE:InitClient()
 					cancel:SetSize(80, 20)
 					cancel:SetParent(frame)
 				end)
-				setColour:SetPos(320, 270)
-				setColour:SetSize(panel:GetWide() - 330, 30)
+				setColour:SetPos(panel:GetWide() - 285, 270)
+				setColour:SetSize(panel:GetWide() - setColour:GetX() - 5, 30)
 				setColour:SetParent(panel)
 				setColour:SetDisabled(true)
+				panel.setColour = setColour
 				
 				local colourImg = vgui.Create("DImage")
 				colourImg:SetImage("icon16/color_wheel.png")
@@ -412,7 +551,7 @@ function MODULE:InitClient()
 				colourImg:SetParent(setColour)
 				colourImg:SetPos(10, (setColour:GetTall() - 16) / 2)
 				
-				local setIcon = VToolkit:CreateButton("Set Icon", function()
+				setIcon = VToolkit:CreateButton("Set Icon", function()
 					local frame = VToolkit:CreateFrame({
 						size = { 400, 270 },
 						pos = { (ScrW() - 400) / 2, (ScrH() - 270) / 2 },
@@ -454,10 +593,11 @@ function MODULE:InitClient()
 					cancel:SetSize(80, 20)
 					cancel:SetParent(frame)
 				end)
-				setIcon:SetPos(320, 310)
-				setIcon:SetSize(panel:GetWide() - 330, 30)
+				setIcon:SetPos(panel:GetWide() - 285, 310)
+				setIcon:SetSize(panel:GetWide() - setIcon:GetX() - 5, 30)
 				setIcon:SetParent(panel)
 				setIcon:SetDisabled(true)
+				panel.setIcon = setIcon
 				
 				local icnImg = vgui.Create("DImage")
 				icnImg:SetImage("icon16/picture.png")
@@ -465,15 +605,58 @@ function MODULE:InitClient()
 				icnImg:SetParent(setIcon)
 				icnImg:SetPos(10, (setIcon:GetTall() - 16) / 2)
 				
+				setParent = VToolkit:CreateButton("Set Parent Rank", function()
+					local selected = rankList:GetSelected()[1]
+					if(rankList:GetSelected()[1].Protected) then
+						VToolkit:CreateErrorDialog("This is a protected rank!")
+						return
+					end
+					local possibleParents = { { Name = "None", Value = nil } }
+					for i,k in pairs(rankList:GetLines()) do
+						if(k:GetValue(1) == selected:GetValue(1)) then continue end
+						if(tonumber(k:GetValue(3)) < tonumber(selected:GetValue(3))) then continue end
+						if(k.Protected) then continue end
+						table.insert(possibleParents, { Name = k:GetValue(1), Value = k:GetValue(1) })
+					end
+					local values = {}
+					for i,k in pairs(possibleParents) do
+						table.insert(values, k.Name)
+					end
+					VToolkit:CreateComboboxPanel("Choose a parent rank:", values, 1, function(val)
+						local nval = nil
+						for i,k in pairs(possibleParents) do
+							if(k.Name == val) then
+								nval = k.Value
+								break
+							end
+						end
+						MODULE:NetStart("VAssignParent")
+						net.WriteString(selected:GetValue(1))
+						net.WriteString(tostring(nval))
+						net.SendToServer()
+					end)
+				end)
+				setParent:SetPos(panel:GetWide() - 285, 350)
+				setParent:SetSize(panel:GetWide() - setParent:GetX() - 5, 30)
+				setParent:SetParent(panel)
+				setParent:SetDisabled(true)
+				panel.setParent = setParent
 				
-				rankList = VToolkit:CreateList({ "Name", "Immunity", "Default" }, false, false)
+				local parentImg = vgui.Create("DImage")
+				parentImg:SetImage("icon16/group.png")
+				parentImg:SetSize(16, 16)
+				parentImg:SetParent(setParent)
+				parentImg:SetPos(10, (setParent:GetTall() - 16) / 2)
+				
+				
+				rankList = VToolkit:CreateList({ "Name", "Parent", "Immunity", "Default" }, false, false)
 				rankList:SetPos(10, 30)
-				rankList:SetSize(300, panel:GetTall() - 40)
+				rankList:SetSize(400, panel:GetTall() - 40)
 				rankList:SetParent(panel)
 				panel.RankList = rankList
 				
-				rankList.Columns[2]:SetFixedWidth(59)
-				rankList.Columns[3]:SetFixedWidth(52)
+				rankList.Columns[3]:SetFixedWidth(59)
+				rankList.Columns[4]:SetFixedWidth(52)
 				
 				local rankHeader = VToolkit:CreateHeaderLabel(rankList, "Ranks")
 				rankHeader:SetParent(panel)
@@ -487,11 +670,20 @@ function MODULE:InitClient()
 					setDefault:SetDisabled(enabled)
 					setColour:SetDisabled(enabled)
 					setIcon:SetDisabled(enabled)
+					setParent:SetDisabled(enabled)
 				end
 				
 			end,
 			Updater = function(panel)
 				Vermilion:PopulateRankTable(panel.RankList, true, true)
+				panel.delRank:SetDisabled(true)
+				panel.renameRank:SetDisabled(true)
+				panel.moveUp:SetDisabled(true)
+				panel.moveDown:SetDisabled(true)
+				panel.setDefault:SetDisabled(true)
+				panel.setColour:SetDisabled(true)
+				panel.setIcon:SetDisabled(true)
+				panel.setParent:SetDisabled(true)
 			end
 		})
 	
@@ -672,7 +864,7 @@ function MODULE:InitClient()
 							net.WriteString(rankList:GetSelected()[1]:GetValue(1))
 							net.SendToServer()
 							playerList:GetSelected()[1]:SetValue(2, rankList:GetSelected()[1]:GetValue(1))
-						end)
+						end, { Confirm = "Yes", Deny = "No", Default = false })
 					else
 						MODULE:NetStart("VAssignRank")
 						net.WriteEntity(Entity(playerList:GetSelected()[1].EntityID))

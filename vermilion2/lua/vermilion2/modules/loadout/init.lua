@@ -294,7 +294,11 @@ function MODULE:InitClient()
 				if(panel.Weapons == nil) then
 					panel.Weapons = {}
 					for i,k in pairs(list.Get("Weapon")) do
-						table.insert(panel.Weapons, { Name = k.PrintName, ClassName = k.ClassName })
+						local name = k.PrintName
+						if(name == nil or name == "") then
+							name = k.ClassName
+						end
+						table.insert(panel.Weapons, { Name = name, ClassName = k.ClassName })
 					end
 				end
 				if(table.Count(panel.AllPermissions:GetLines()) == 0) then
