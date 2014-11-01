@@ -191,7 +191,18 @@ function MODULE:RegisterChatCommands()
 end
 
 function MODULE:BanPlayer(vplayer, banner, time, reason, log, glog)
-	log = log or function(text, typ, time) Vermilion:AddNotification(banner, text, typ, time) end
+	if(IsValid(banner)) then
+		log = log or function(text, typ, time) Vermilion:AddNotification(banner, text, typ, time) end
+	else
+		log = log or function(text, typ, time) Vermilion.Log(text) end
+		banner = {}
+		function banner:GetName()
+			return "Vermilion"
+		end
+		function banner:SteamID()
+			return "VERMILION"
+		end
+	end
 	glog = glog or function(text, typ, time) Vermilion:BroadcastNotification(text, typ, time) end
 	local has = false
 	for i,k in pairs(MODULE:GetData("bans", {}, true)) do
@@ -240,10 +251,13 @@ function MODULE:UpdateBans()
 end
 
 function MODULE:InitServer()
-	self:AddHook("CheckPassword", function(steamid, ip, svpass, clpass,  name)
+	self:AddHook("CheckPassword", function(steamid, ip, svpass, clpass, name)
 		MODULE:UpdateBans()
 		if(MODULE:IsPlayerBanned(util.SteamIDFrom64(steamid))) then
 			Vermilion:BroadcastNotification(name .. " has tried to re-connect to the server!", NOTIFY_ERROR)
+			if(Vermilion:GetModule("event_logger") != nil) then
+				Vermilion:GetModule("event_logger"):AddEvent("exclamation", name .. " attempted to re-connect to the server!")
+			end
 			if(MODULE:GetBanData(util.SteamIDFrom64(steamid)).ExpiryTime == 0) then
 				return false, "You are banned permanently: " .. (MODULE:GetBanData(util.SteamIDFrom64(steamid)).Reason or "No reason given")
 			end
@@ -474,14 +488,16 @@ function MODULE:InitClient()
 			end
 			ln.BSteamID = k.SteamID
 			ln.BBSteamID = k.BannerSteamID
+			
 			steamworks.RequestPlayerInfo(util.SteamIDTo64(k.SteamID))
-			steamworks.RequestPlayerInfo(util.SteamIDTo64(k.BannerSteamID))
+			if(k.BannerSteamID != "VERMILION") then steamworks.RequestPlayerInfo(util.SteamIDTo64(k.BannerSteamID)) end
 			timer.Simple(3, function()
 				if(not IsValid(panel) or not IsValid(ln)) then
 					return
 				end
 				local bannedName = steamworks.GetPlayerName(util.SteamIDTo64(k.SteamID))
-				local bannerName = steamworks.GetPlayerName(util.SteamIDTo64(k.BannerSteamID))
+				local bannerName = k.BannerName
+				if(k.BannerSteamID != "VERMILION") then bannerName = steamworks.GetPlayerName(util.SteamIDTo64(k.BannerSteamID)) end
 				
 				if(bannedName != nil) then
 					ln:SetValue(1, bannedName)

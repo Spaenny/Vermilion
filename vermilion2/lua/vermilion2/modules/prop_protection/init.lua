@@ -43,7 +43,9 @@ MODULE.Permissions = {
 	"use_all",
 	"right_click_all",
 	"right_click_others",
-	"right_click_own"
+	"right_click_own",
+	
+	"immune_to_antispam"
 }
 MODULE.PermissionDefinitions = {
 	["manage_prop_protection"] = "This player can see the Prop Protection Settings tab in the Vermilion menu and modify the settings within.",
@@ -185,6 +187,53 @@ function MODULE:InitShared()
 			mgr:AddOption("prop_protect", "prop_protect_gravgun", "Block unpermitted players from using the gravity gun on other player's props", "Checkbox", "Prop Protection", true, "manage_prop_protection")
 			mgr:AddOption("prop_protect", "prop_protect_toolgun", "Block unpermitted players from using the toolgun on other player's props", "Checkbox", "Prop Protection", true, "manage_prop_protection")
 			mgr:AddOption("prop_protect", "prop_protect_world", "Blanket ban all physgun/toolgun interaction on map spawned props", "Checkbox", "Prop Protection", true, "manage_prop_protection")
+		
+			mgr:AddCategory("Anti-Spam", 3)
+			mgr:AddOption("prop_protect", "antispam_enabled", "Enable Anti-Spam", "Checkbox", "Anti-Spam", false, "manage_prop_protection")
+			mgr:AddOption("prop_protect", "antispam_propslimit", "Max props in time limit", "Slider", "Anti-Spam", 5, "manage_prop_protection", { Bounds = { Min = 0, Max = 50 }, Decimals = 0 })
+			mgr:AddOption("prop_protect", "antispam_timelimit", "Time limit", "Slider", "Anti-Spam", 5, "manage_prop_protection", { Bounds = { Min = 1, Max = 20 }, Decimals = 0 })
+			mgr:AddOption("prop_protect", "antispam_action1", "First Infraction", "Combobox", "Anti-Spam", 1, "manage_prop_protection", { Options = {
+					"Warn Only",
+					"Block spawning for 30 seconds",
+					"Block spawning for 1 minute",
+					"Kick",
+					"Ban for 5 minutes",
+					"Ban for 10 minutes",
+					"Ban for 20 minutes",
+					"Ban for 30 minutes",
+					"Ban for 1 hour",
+					"Ban for 1 day",
+					"Permanently Ban"
+				}
+			})
+			mgr:AddOption("prop_protect", "antispam_action2", "Second Infraction", "Combobox", "Anti-Spam", 1, "manage_prop_protection", { Options = {
+					"Warn Only",
+					"Block spawning for 30 seconds",
+					"Block spawning for 1 minute",
+					"Kick",
+					"Ban for 5 minutes",
+					"Ban for 10 minutes",
+					"Ban for 20 minutes",
+					"Ban for 30 minutes",
+					"Ban for 1 hour",
+					"Ban for 1 day",
+					"Permanently Ban"
+				}
+			})
+			mgr:AddOption("prop_protect", "antispam_action3", "Third Infraction", "Combobox", "Anti-Spam", 1, "manage_prop_protection", { Options = {
+					"Warn Only",
+					"Block spawning for 30 seconds",
+					"Block spawning for 1 minute",
+					"Kick",
+					"Ban for 5 minutes",
+					"Ban for 10 minutes",
+					"Ban for 20 minutes",
+					"Ban for 30 minutes",
+					"Ban for 1 hour",
+					"Ban for 1 day",
+					"Permanently Ban"
+				}
+			})
 		end
 	end)
 end
@@ -257,6 +306,118 @@ function MODULE:InitServer()
 	function eMeta:CPPICanPunt( vplayer )
 		return MODULE:CanGravGunPunt( vplayer, self )
 	end
+	
+	local function doInfraction(ply, num)
+		local infractionMode = 1
+		if(num == 1) then
+			infractionMode = MODULE:GetData("antispam_action1", 1, true)
+		elseif(num == 2) then
+			infractionMode = MODULE:GetData("antispam_action2", 1, true)
+		else
+			infractionMode = MODULE:GetData("antispam_action3", 1, true)
+		end
+		
+		local UserData = Vermilion:GetUser(ply)
+		
+		if(infractionMode == 1) then
+			Vermilion:AddNotification(ply, "You have spawned too many props in a short space of time. Please wait for the quota to reset in " .. tostring(math.Round(timer.TimeLeft("VAntiSpam_Reset"), 2)) .. " seconds. Infraction: " .. tostring(num) .. ".", NOTIFY_HINT)
+		elseif(infractionMode == 2) then
+			Vermilion:GetUser(ply).AntiSpamBlockedUntil = os.time() + 30
+			Vermilion:AddNotification(ply, "You have spawned too many props in a short space of time. Please wait 30 seconds for the quota to reset. Infraction: " .. tostring(num) .. ".", NOTIFY_ERROR)
+		elseif(infractionMode == 3) then
+			Vermilion:GetUser(ply).AntiSpamBlockedUntil = os.time() + 60
+			Vermilion:AddNotification(ply, "You have spawned too many props in a short space of time. Please wait 1 minute for the quota to reset. Infraction: " .. tostring(num) .. ".", NOTIFY_ERROR)
+		elseif(infractionMode == 4) then
+			Vermilion:BroadcastNotification(ply:GetName() .. " was kicked by anti-spam. Infraction: " .. tostring(num))
+			ply:Kick("Kicked by anti-spam. Infraction: " .. tostring(num))
+		elseif(infractionMode == 5) then
+			Vermilion:GetModule("bans"):BanPlayer(ply, nil, 60 * 5, "Banned by anti-spam for 5 minutes. Infraction: " .. tostring(num))
+		elseif(infractionMode == 6) then
+			Vermilion:GetModule("bans"):BanPlayer(ply, nil, 60 * 10, "Banned by anti-spam for 10 minutes. Infraction: " .. tostring(num))
+		elseif(infractionMode == 7) then
+			Vermilion:GetModule("bans"):BanPlayer(ply, nil, 60 * 20, "Banned by anti-spam for 20 minutes. Infraction: " .. tostring(num))
+		elseif(infractionMode == 8) then
+			Vermilion:GetModule("bans"):BanPlayer(ply, nil, 60 * 30, "Banned by anti-spam for 30 minutes. Infraction: " .. tostring(num))
+		elseif(infractionMode == 9) then
+			Vermilion:GetModule("bans"):BanPlayer(ply, nil, 60 * 60, "Banned by anti-spam for 1 hour. Infraction: " .. tostring(num))
+		elseif(infractionMode == 10) then
+			Vermilion:GetModule("bans"):BanPlayer(ply, nil, 60 * 60 * 24, "Banned by anti-spam for 1 day. Infraction: " .. tostring(num))
+		elseif(infractionMode == 11) then
+			Vermilion:GetModule("bans"):BanPlayer(ply, nil, 0, "Banned by anti-spam permanently. Infraction: " .. tostring(num))
+		end
+		
+		UserData.AntiSpamInfractionsExpire = os.time() + (60 * 60 * 24)
+		UserData.AntiSpamWaitUntilReset = true
+		UserData.AntiSpamNextInfractionLevel = num + 1
+		if(UserData.AntiSpamNextInfractionLevel > 3) then
+			UserData.AntiSpamNextInfractionLevel = 1
+		end
+	end
+	
+	local function doSpawnChecks(ply)
+		if(Vermilion:GetUser(ply).AntiSpamBlockedUntil != nil) then
+			if(os.time() <= Vermilion:GetUser(ply).AntiSpamBlockedUntil) then
+				Vermilion:AddNotification(ply, "You have been blocked from spawning props. Please wait for your cooldown to expire.", NOTIFY_HINT)
+				return false
+			end
+		end
+		if(Vermilion:GetUser(ply).AntiSpamWaitUntilReset) then
+			if(Vermilion:GetUser(ply).AntiSpamCooldown == 0) then
+				Vermilion:GetUser(ply).AntiSpamWaitUntilReset = false
+			else
+				Vermilion:AddNotification(ply, "You have spawned too many props in a short space of time. Please wait for the quota to reset in " .. tostring(math.Round(timer.TimeLeft("VAntiSpam_Reset"), 2)) .. " seconds.", NOTIFY_HINT)
+				return false
+			end
+		end
+		if(Vermilion:GetUser(ply).AntiSpamInfractionsExpire == nil) then Vermilion:GetUser(ply).AntiSpamInfractionsExpire = 0 end
+		if(os.time() >= Vermilion:GetUser(ply).AntiSpamInfractionsExpire) then
+			Vermilion:GetUser(ply).AntiSpamNextInfractionLevel = 1
+		end
+		if(Vermilion:GetUser(ply).AntiSpamCooldown >= MODULE:GetData("antispam_propslimit", 5, true) and MODULE:GetData("antispam_enabled", false, true)) then
+			doInfraction(ply, Vermilion:GetUser(ply).AntiSpamNextInfractionLevel or 1)
+			return false
+		end
+		if(Vermilion:GetUser(ply).AntiSpamCooldown == nil) then Vermilion:GetUser(ply).AntiSpamCooldown = 0 end
+		Vermilion:GetUser(ply).AntiSpamCooldown = Vermilion:GetUser(ply).AntiSpamCooldown + 1
+	end
+	
+	local antiSpamHooks = {
+		"PlayerSpawnProp",
+		"PlayerSpawnEffect",
+		"PlayerSpawnNPC",
+		"PlayerSpawnRagdoll",
+		"PlayerSpawnSENT",
+		"PlayerSpawnSWEP",
+		"PlayerSpawnVehicle"
+	}
+	
+	for i,k in pairs(antiSpamHooks) do
+		self:AddHook(k, k .. tostring(i), function(ply)
+			if(Vermilion:HasPermission(ply, "immune_to_antispam")) then return end
+			return doSpawnChecks(ply)
+		end)
+	end
+	
+	local function doAntiSpamReset()
+		for i,ply in pairs(VToolkit.GetValidPlayers()) do
+			if(Vermilion:GetUser(ply).AntiSpamCooldown == nil) then Vermilion:GetUser(ply).AntiSpamCooldown = 0 end
+			if(Vermilion:GetUser(ply).AntiSpamCooldown >= MODULE:GetData("antispam_propslimit", 5, true)) then
+				Vermilion:AddNotification(ply, "Anti-Spam limit reset.", NOTIFY_HINT)
+			end
+			Vermilion:GetUser(ply).AntiSpamCooldown = 0
+		end
+	end
+	
+	timer.Create("VAntiSpam_Reset", MODULE:GetData("antispam_timelimit", 5, true), 0, function()
+		doAntiSpamReset()
+	end)
+	
+	self:AddDataChangeHook("antispam_timelimit", "reloadantispam", function(val)
+		timer.Destroy("VAntiSpam_Reset")
+		timer.Create("VAntiSpam_Reset", val, 0, function()
+			doAntiSpamReset()
+		end)
+	end)
 	
 end
 

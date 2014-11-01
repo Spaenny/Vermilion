@@ -1041,17 +1041,17 @@ function MODULE:InitClient()
 				elseif(k.Type == "Slider") then
 					local panel = vgui.Create("DPanel")
 					
-					local slider = VToolkit:CreateSlider(k.GuiText, k.Bounds.Min, k.Bounds.Max, 2)
+					local slider = VToolkit:CreateSlider(k.GuiText, k.Bounds.Min, k.Bounds.Max, k.Decimals or 2)
 					slider:SetPos(10, 3)
 					slider:SetParent(panel)
 					slider:SetWide(300)
 					
 					slider:SetValue(k.Default)
 					
-					function slider:OnChange(index)
+					function slider:OnValueChanged(value)
 						if(MODULE.UpdatingGUI) then return end
 						MODULE:NetStart("VServerUpdate")
-						net.WriteTable({{ Module = k.Module, Name = k.Name, Value = index}})
+						net.WriteTable({{ Module = k.Module, Name = k.Name, Value = math.Round(value, k.Decimals or 2) }})
 						net.SendToServer()
 					end
 					

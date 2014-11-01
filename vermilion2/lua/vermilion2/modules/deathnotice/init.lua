@@ -26,11 +26,22 @@ MODULE.Permissions = {
 
 }
 
+MODULE.HitGroupTranslations = {
+	"head",
+	"chest",
+	"stomach",
+	"left arm",
+	"right arm",
+	"left leg",
+	"right leg"
+}
+
 function MODULE:InitShared()
 	self:AddHook(Vermilion.Event.MOD_LOADED, function()
 		local mod = Vermilion:GetModule("server_settings")
 		if(mod != nil) then
 			mod:AddOption("deathnotice", "enabled", "Enable Death Notices", "Checkbox", "Misc")
+			mod:AddOption("deathnotice", "debugmode", "Enable Death Notice Debug Output", "Checkbox", "Misc")
 		end
 	end)
 end
@@ -62,9 +73,11 @@ function MODULE:InitServer()
 		end
 		
 		local weapon_types = {
+			0,
 			8194,
 			4098,
-			536875010
+			536875010,
+			67112960
 		}
 		
 		if(typ == DMG_CRUSH) then
@@ -91,7 +104,7 @@ function MODULE:InitServer()
 	end)
 	
 	function MODULE:HandleGeneric(victim, attacker, inflictor, dmg, suicide, distance)
-		Msg("[GENERIC]\n", "Victim: ", victim, "\n", "Attacker: ", attacker, "\n", "Inflictor: ", inflictor, "\n", "Type: ", dmg:GetDamageType(), "\n")
+		if(self:GetData("debugmode", false, true)) then Msg("[GENERIC]\n", "Victim: ", victim, "\n", "Attacker: ", attacker, "\n", "Inflictor: ", inflictor, "\n", "Type: ", dmg:GetDamageType(), "\n") end
 		if(dmg:GetDamageType() == DMG_DISSOLVE or dmg:GetDamageType() == 67108865) then
 			if(attacker:IsPlayer()) then
 				Vermilion:BroadcastNotification(victim:GetName() .. " was fizzled by " .. attacker:GetName())
@@ -102,7 +115,7 @@ function MODULE:InitServer()
 	end
 	
 	function MODULE:HandlePhysics(victim, attacker, inflictor, dmg, suicide)
-		Msg("[PHYSICS]\n", "Victim: ", victim, "\n", "Attacker: ", attacker, "\n", "Inflictor: ", inflictor, "\n", "Type: ", dmg:GetDamageType(), "\n")
+		if(self:GetData("debugmode", false, true)) then Msg("[PHYSICS]\n", "Victim: ", victim, "\n", "Attacker: ", attacker, "\n", "Inflictor: ", inflictor, "\n", "Type: ", dmg:GetDamageType(), "\n") end
 		if(attacker:IsPlayer()) then
 			Vermilion:BroadcastNotification(victim:GetName() .. " was crushed by " .. attacker:GetName())
 		else
@@ -115,7 +128,7 @@ function MODULE:InitServer()
 	end
 	
 	function MODULE:HandleWeapon(victim, attacker, inflictor, dmg, suicide, distance)
-		Msg("[WEAPON]\n", "Victim: ", victim, "\n", "Attacker: ", attacker, "\n", "Inflictor: ", inflictor, "\n", "Type: ", dmg:GetDamageType(), "\n")
+		if(self:GetData("debugmode", false, true)) then Msg("[WEAPON]\n", "Victim: ", victim, "\n", "Attacker: ", attacker, "\n", "Inflictor: ", inflictor, "\n", "Type: ", dmg:GetDamageType(), "\n") end
 		if(IsValid(attacker) and attacker:IsPlayer()) then
 			local weapon = nil
 			if(IsValid(attacker:GetActiveWeapon())) then
@@ -125,28 +138,41 @@ function MODULE:InitServer()
 				if(suicide) then
 					Vermilion:BroadcastNotification(victim:GetName() .. " killed him/herself with a " .. weapon)
 				else
-					local server_best = self:GetData("longest_shot", 0, true)
-					local server_best_owner = self:GetData("longest_shot_holder", "", true)
+					local server_best = self:GetData("longest_shot", {}, true)[weapon] or 0
+					local server_best_owner = self:GetData("longest_shot_holder", {}, true)[weapon] or ""
+					local shotat = MODULE.HitGroupTranslations[victim:LastHitGroup()]
+					if(shotat != nil) then
+						shotat = " with a direct hit to the " .. shotat .. "."
+					else
+						shotat = "."
+					end
 					if(distance > server_best) then
 						local recordtext = ""
 						if(server_best_owner != "") then
-							recordtext = " (NEW RECORD! Old: " .. tostring(server_best) .. "m - " .. server_best_owner .. ")" 
+							recordtext = " (NEW RECORD FOR THIS WEAPON! Old: " .. tostring(server_best) .. "m - " .. server_best_owner .. ")" 
 						end
-						Vermilion:BroadcastNotification(victim:GetName() .. " was killed by " .. attacker:GetName() .. " with a " .. weapon .. " from " .. tostring(distance) .. "m away." .. recordtext)
-						self:SetData("longest_shot", distance)
-						self:SetData("longest_shot_holder", attacker:GetName())
+						
+						Vermilion:BroadcastNotification(victim:GetName() .. " was killed by " .. attacker:GetName() .. " with a " .. weapon .. " from " .. tostring(distance) .. "m away" .. shotat .. recordtext)
+						self:GetData("longest_shot", {}, true)[weapon] = distance
+						self:SetData("longest_shot_holder", {}, true)[weapon] = attacker:GetName()
 					else
-						Vermilion:BroadcastNotification(victim:GetName() .. " was killed by " .. attacker:GetName() .. " with a " .. weapon .. " from " .. tostring(distance) .. "m away.")
+						Vermilion:BroadcastNotification(victim:GetName() .. " was killed by " .. attacker:GetName() .. " with a " .. weapon .. " from " .. tostring(distance) .. "m away" .. shotat)
 					end
 				end
 			else
-				Vermilion:BroadcastNotification(victim:GetName() .. " was killed by " .. attacker:GetName() .. " from " .. tostring(distance) .. "m away.")
+				local shotat = MODULE.HitGroupTranslations[victim:LastHitGroup()]
+				if(shotat != nil) then
+					shotat = " with a direct hit to the " .. shotat .. "."
+				else
+					shotat = "."
+				end
+				Vermilion:BroadcastNotification(victim:GetName() .. " was killed by " .. attacker:GetName() .. " from " .. tostring(distance) .. "m away" .. shotat)
 			end
 		end
 	end
 	
 	function MODULE:HandleEnvironmental(victim, attacker, inflictor, dmg, suicide)
-		Msg("[ENV]\n", "Victim: ", victim, "\n", "Attacker: ", attacker, "\n", "Inflictor: ", inflictor, "\n", "Type: ", dmg:GetDamageType(), "\n")
+		if(self:GetData("debugmode", false, true)) then Msg("[ENV]\n", "Victim: ", victim, "\n", "Attacker: ", attacker, "\n", "Inflictor: ", inflictor, "\n", "Type: ", dmg:GetDamageType(), "\n") end
 		if(dmg:GetDamageType() == DMG_FALL) then
 			Vermilion:BroadcastNotification(victim:GetName() .. " was dominated by Isaac Newton!")
 		elseif(dmg:GetDamageType() == DMG_BURN or dmg:GetDamageType() == 268435464) then
@@ -155,7 +181,7 @@ function MODULE:InitServer()
 	end
 	
 	function MODULE:HandleVehicle(victim, attacker, inflictor, dmg)
-		Msg("[VEHICLE]\n", "Victim: ", victim, "\n", "Attacker: ", attacker, "\n", "Inflictor: ", inflictor, "\n", "Type: ", dmg:GetDamageType(), "\n")
+		if(self:GetData("debugmode", false, true)) then Msg("[VEHICLE]\n", "Victim: ", victim, "\n", "Attacker: ", attacker, "\n", "Inflictor: ", inflictor, "\n", "Type: ", dmg:GetDamageType(), "\n") end
 		if(attacker:IsPlayer()) then
 			local vehicleName = nil
 			for i,k in pairs(list.Get("Vehicles")) do
@@ -173,7 +199,7 @@ function MODULE:InitServer()
 	end
 	
 	function MODULE:HandleExplosive(victim, attacker, inflictor, dmg, suicide, distance)
-		Msg("[EXPLOSIVE]\n", "Victim: ", victim, "\n", "Attacker: ", attacker, "\n", "Inflictor: ", inflictor, "\n", "Type: ", dmg:GetDamageType(), "\n")
+		if(self:GetData("debugmode", false, true)) then Msg("[EXPLOSIVE]\n", "Victim: ", victim, "\n", "Attacker: ", attacker, "\n", "Inflictor: ", inflictor, "\n", "Type: ", dmg:GetDamageType(), "\n") end
 		if(IsValid(attacker) and attacker:IsPlayer()) then
 			local weapon = nil
 			if(IsValid(attacker:GetActiveWeapon())) then
@@ -183,16 +209,16 @@ function MODULE:InitServer()
 				if(suicide) then
 					Vermilion:BroadcastNotification(victim:GetName() .. " has blown him/herself up with a " .. weapon)
 				else
-					local server_best = self:GetData("longest_shot", 0, true)
-					local server_best_owner = self:GetData("longest_shot_holder", "", true)
+					local server_best = self:GetData("longest_shot", {}, true)[weapon] or 0
+					local server_best_owner = self:GetData("longest_shot_holder", {}, true)[weapon] or ""
 					if(distance > server_best) then
 						local recordtext = ""
 						if(server_best_owner != "") then
-							recordtext = " (NEW RECORD! Old: " .. tostring(server_best) .. "m - " .. server_best_owner .. ")" 
+							recordtext = " (NEW RECORD FOR THIS WEAPON! Old: " .. tostring(server_best) .. "m - " .. server_best_owner .. ")" 
 						end
 						Vermilion:BroadcastNotification(victim:GetName() .. " was blown up by " .. attacker:GetName() .. " with a " .. weapon .. " from " .. tostring(distance) .. "m away." .. recordtext)
-						self:SetData("longest_shot", distance)
-						self:SetData("longest_shot_holder", attacker:GetName())
+						self:GetData("longest_shot", {}, true)[weapon] = distance
+						self:SetData("longest_shot_holder", {}, true)[weapon] = attacker:GetName()
 					else
 						Vermilion:BroadcastNotification(victim:GetName() .. " was blown up by " .. attacker:GetName() .. " with a " .. weapon .. " from " .. tostring(distance) .. "m away.")
 					end

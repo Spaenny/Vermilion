@@ -64,7 +64,12 @@ function Vermilion:AddChatCommand(props)
 				function sender:SteamID()
 					return "CONSOLE"
 				end
+			else
+				if(Vermilion:GetModule("event_logger") != nil) then
+					Vermilion:GetModule("event_logger"):AddEvent("script", sender:GetName() .. " is running the " .. props.Name .. " chat command. (" .. table.concat(text, ", ") .. ")")
+				end
 			end
+			
 			local success = props.Function(sender, args, function(text) Vermilion.Log(text) end, function(text, typ, time) commandGLOG(props.Name, text, typ, time) end)
 			if(success == nil) then success = true end
 			if(not success) then
@@ -167,6 +172,9 @@ function Vermilion:HandleChat(vplayer, text, targetLogger, isConsole)
 					logFunc("Cannot specify all players (@) here!", NOTIFY_ERROR)
 					return ""
 				end
+				if(Vermilion:GetModule("event_logger") != nil) then
+					Vermilion:GetModule("event_logger"):AddEvent("script", vplayer:GetName() .. " is running the " .. commandName .. " chat command. (" .. table.concat(parts, ", ") .. ")")
+				end
 				local edittable = table.Copy(parts)
 				for i,k in pairs(VToolkit.GetValidPlayers()) do
 					for i1,k1 in pairs(atindexes) do
@@ -182,6 +190,9 @@ function Vermilion:HandleChat(vplayer, text, targetLogger, isConsole)
 					commandGLOG(command.Name, command.AllBroadcast(vplayer, parts))
 				end
 			else
+				if(Vermilion:GetModule("event_logger") != nil) then
+					Vermilion:GetModule("event_logger"):AddEvent("script", vplayer:GetName() .. " is running the " .. commandName .. " chat command. (" .. table.concat(parts, ", ") .. ")")
+				end
 				local success = command.Function(vplayer, parts, logFunc, function(text, typ, time) commandGLOG(commandName, text, typ, time) end)
 				if(success == nil) then success = true end
 				if(not success) then 
