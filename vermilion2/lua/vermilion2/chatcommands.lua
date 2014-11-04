@@ -20,6 +20,11 @@
 Vermilion.ChatCommands = {}
 Vermilion.ChatAliases = {}
 
+util.AddNetworkString("VFakeChat")
+net.Receive("VFakeChat", function(len, vplayer)
+	Vermilion:HandleChat(vplayer, net.ReadString(), vplayer, false)
+end)
+
 local commandMustHave = { "Name", "Function" }
 local commandShouldHave = {
 	{ "Description", "There isn't one." },
@@ -112,32 +117,7 @@ function Vermilion:HandleChat(vplayer, text, targetLogger, isConsole)
 	end
 	if(string.StartWith(text, Vermilion:GetData("command_prefix", "!", true))) then
 		local commandText = string.sub(text, 2)
-		local parts = string.Explode(" ", commandText, false)
-		local parts2 = {}
-		local part = ""
-		local isQuoted = false
-		for i,k in pairs(parts) do
-			if(isQuoted and string.find(k, "\"")) then
-				table.insert(parts2, string.Replace(part .. " " .. k, "\"", ""))
-				isQuoted = false
-				part = ""
-			elseif(not isQuoted and string.find(k, "\"")) then
-				part = k
-				isQuoted = true
-			elseif(isQuoted) then
-				part = part .. " " .. k
-			else
-				table.insert(parts2, k)
-			end
-		end
-		table.insert(parts2, string.Trim(string.Replace(part, "\"", "")))
-		parts = {}
-		for i,k in pairs(parts2) do
-			if(k != nil and k != "") then
-				table.insert(parts, k)
-			end
-		end
-		local commandName = parts[1]
+		local commandName, parts = Vermilion.ParseChatLineForParameters(commandText)
 		if(Vermilion.ChatAliases[commandName] != nil) then
 			commandName = Vermilion.ChatAliases[commandName]
 		end
@@ -146,7 +126,6 @@ function Vermilion:HandleChat(vplayer, text, targetLogger, isConsole)
 			for i,k in pairs(command.Permissions) do
 				if(not Vermilion:HasPermissionError(vplayer, k, logFunc)) then return "" end
 			end
-			table.remove(parts, 1)
 			local atindexes = {}
 			for i,k in pairs(parts) do
 				if(k == "@") then // <-- this does hax to make sure I don't have to program in a load of possible cases in each command. Plus this means that I can add other symbols at some point.

@@ -32,6 +32,8 @@ if(CLIENT) then
 				if(k == "FUNCTION") then
 					tnode:SetIcon("icon16/script.png")
 					tnode:AddNode("Type: function")
+				elseif(k == "IMATERIAL") then
+					tnode:AddNode("Type: function")
 				elseif(k == "LARGE TABLE") then
 					tnode:AddNode("Type: table")
 					tnode:SetIcon("icon16/folder.png")
@@ -92,6 +94,8 @@ else
 				end
 			elseif(isfunction(k)) then
 				tab[i] = "FUNCTION"
+			elseif(type(k) == "IMaterial") then
+				tab[i] = "IMATERIAL"
 			end
 		end
 	end

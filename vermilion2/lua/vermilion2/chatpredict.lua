@@ -39,7 +39,7 @@ if(SERVER) then
 		end
 		
 		if(string.find(current, " ") and predictor != nil) then
-			local parts = Vermilion.ParseChatLineForParameters(current)
+			local cmdName,parts = Vermilion.ParseChatLineForParameters(current)
 			local dataTable = predictor(table.Count(parts), parts[table.Count(parts)], parts, vplayer)
 			if(dataTable != nil) then
 				for i,k in pairs(dataTable) do

@@ -64,14 +64,19 @@ function VToolkit.GetPlayerNames()
 	return tab
 end
 
-function VToolkit.MatchPlayerPart(pool, query)
+function VToolkit.MatchPlayerPart(pool, query, matcher)
+	if(isfunction(query)) then
+		matcher = query
+		query = nil
+	end
+	if(not isfunction(matcher)) then matcher = function() return true end end
 	if(query == nil) then
 		query = pool
 		pool = VToolkit.GetValidPlayers()
 	end
 	local result = {}
 	for i,k in pairs(pool) do
-		if(string.find(string.lower(k:GetName()), string.lower(query))) then
+		if(string.find(string.lower(k:GetName()), string.lower(query)) and matcher(k, query)) then
 			table.insert(result, k:GetName())
 		end
 	end

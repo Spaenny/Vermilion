@@ -549,15 +549,50 @@ end
 
 ]]--
 
+function Vermilion:CreateDefaultDataStructs()
+	Vermilion.Data.Ranks = {
+		Vermilion:CreateRankObj("owner", { "*" }, true, Color(255, 0, 0), "key"),
+		Vermilion:CreateRankObj("admin", nil, false, Color(0, 255, 0), "shield"),
+		Vermilion:CreateRankObj("player", nil, false, Color(0, 0, 255), "user"),
+		Vermilion:CreateRankObj("guest", nil, false, Color(0, 0, 0), "user_orange")
+	}
+end
+
 function Vermilion:LoadConfiguration()
 	if(Vermilion.FirstRun) then
-		Vermilion.Data.Ranks = {
-			Vermilion:CreateRankObj("owner", { "*" }, true, Color(255, 0, 0), "key"),
-			Vermilion:CreateRankObj("admin", nil, false, Color(0, 255, 0), "shield"),
-			Vermilion:CreateRankObj("player", nil, false, Color(0, 0, 255), "user"),
-			Vermilion:CreateRankObj("guest", nil, false, Color(0, 0, 0), "user_orange")
-		}
+		self:CreateDefaultDataStructs()
+		file.CreateDir("vermilion2/backup")
 	else
+		if(file.Size(self.GetFileName("settings"), "DATA") == 0) then
+			Vermilion.Log({Vermilion.Colours.Red, "[CRITICAL WARNING]", Vermilion.Colours.White, " I lost the configuration file... Usually a result of GMod unexpectedly stopping, most likely due to a BSoD or Kernel Panic. Sorry about that :( I'll try to restore a backup for you."})
+			
+			local fls = file.Find("vermilion2/backup/*.txt", "DATA", "nameasc")
+			
+			if(table.Count(fls) == 0) then
+				Vermilion.Log({ Vermilion.Colours.Red, "NO BACKUPS FOUND! Did you delete them? Restoring configuration file to defaults." })
+				self:CreateDefaultDataStructs()
+				return
+			end
+			
+			
+			local max = 0
+			for i,k in pairs(fls) do
+				if(tonumber(string.Replace(k, ".txt", "")) > max) then
+					max = tonumber(string.Replace(k, ".txt", ""))
+				end
+			end
+			
+			local content = file.Read("vermilion2/backup/" .. tostring(max) .. ".txt")
+			file.Write(self.GetFileName("settings"), content)
+			
+			Vermilion.Log("Restored configuration with timestamp " .. tostring(max) .. "!")
+		else
+			Vermilion.Log("Backing up configuration file...")
+			local code = tostring(os.time())
+			local content = file.Read(self.GetFileName("settings"), "DATA")
+			
+			file.Write("vermilion2/backup/" .. code .. ".txt", content)
+		end
 		local data = util.JSONToTable(util.Decompress(file.Read(self.GetFileName("settings"), "DATA")))
 		for i,rank in pairs(data.Ranks) do
 			self:AttachRankFunctions(rank)
@@ -584,7 +619,7 @@ Vermilion:AddHook("ShutDown", "SaveConfiguration", true, function()
 	Vermilion:SaveConfiguration()
 end)
 
-timer.Create("Vermilion:SaveConfiguration", 2, 0, function()
+timer.Create("Vermilion:SaveConfiguration", 30, 0, function()
 	Vermilion:SaveConfiguration(false)
 end)
 
@@ -626,8 +661,9 @@ Vermilion:AddHook("PlayerInitialSpawn", "RegisterPlayer", true, function(vplayer
 	net.WriteTable(tab)
 	net.Broadcast()
 	
-	-- this is temporary until I get the GeoIP working
+	
 	timer.Simple(1, function()
+		if(not Vermilion:GetData("joinleave_enabled", true, true)) then return end
 		if(new) then
 			Vermilion:BroadcastNotification(vplayer:GetName() .. " has joined the server for the first time!")
 		else
@@ -635,6 +671,7 @@ Vermilion:AddHook("PlayerInitialSpawn", "RegisterPlayer", true, function(vplayer
 		end
 	end)
 end)
+
 
 
 

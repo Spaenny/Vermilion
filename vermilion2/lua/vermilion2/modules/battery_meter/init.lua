@@ -38,28 +38,28 @@ function MODULE:InitClient()
 		if(GetConVarNumber("vermilion_battery_meter") == 0) then return end
 		if(MODULE.LastBatteryLevel != system.BatteryPower()) then
 			if(MODULE.LastBatteryLevel == 255) then
-				Vermilion:AddNotify("Computer unplugged!")
+				Vermilion:AddNotification(MODULE:TranslateStr("unplugged"))
 			end
 			if(system.BatteryPower() == 255) then
-				Vermilion:AddNotify("Computer plugged in!")
+				Vermilion:AddNotification(MODULE:TranslateStr("pluggedin"))
 			end
 			if(system.BatteryPower() == 20) then
-				Vermilion:AddNotify("Low battery: 20%!")
+				Vermilion:AddNotification(MODULE:TranslateStr("low", { "20" }))
 			elseif(system.BatteryPower() == 15) then
-				Vermilion:AddNotify("Low battery: 15%!")
+				Vermilion:AddNotification(MODULE:TranslateStr("low", { "15" }))
 			elseif(system.BatteryPower() == 10) then
-				Vermilion:AddNotify("Low battery: 10%!", NOTIFY_ERROR)
+				Vermilion:AddNotification(MODULE:TranslateStr("low", { "10" }), NOTIFY_ERROR)
 			elseif(system.BatteryPower() == 5) then
-				Vermilion:AddNotify("Critical battery: 5%!", NOTIFY_ERROR)
+				Vermilion:AddNotification(MODULE:TranslateStr("critical", { "5" }), NOTIFY_ERROR)
 			end
 			MODULE.LastBatteryLevel = system.BatteryPower()
 		end
 		if(system.BatteryPower() == 255) then return end
-		MODULE.WBWidth = draw.WordBox( 8, (ScrW() / 2) - (MODULE.WBWidth / 2), 10, "Battery Level: " .. tostring(system.BatteryPower()) .. "%", "Default", Color(0, 0, 0, 255), Color(255, 255, 255, 255))
+		MODULE.WBWidth = draw.WordBox( 8, (ScrW() / 2) - (MODULE.WBWidth / 2), 10, MODULE:TranslateStr("interface", { tostring(system.BatteryPower()) }), "Default", Color(0, 0, 0, 255), Color(255, 255, 255, 255))
 	end)
 	self:AddHook(Vermilion.Event.MOD_LOADED, function()
 		if(Vermilion:GetModule("client_settings") != nil) then
-			Vermilion:GetModule("client_settings"):AddOption("vermilion_battery_meter", "Enable Battery Meter", "Checkbox", "Features", {})
+			Vermilion:GetModule("client_settings"):AddOption("vermilion_battery_meter", MODULE:TranslateStr("cl_opt"), "Checkbox", "Features", {})
 		end
 	end)
 end

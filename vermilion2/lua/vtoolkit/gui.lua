@@ -289,7 +289,12 @@ function VToolkit:CreateSlider(text, min, max, decimals, convar)
 	slider:SetText(text)
 	slider:SetMin(min)
 	slider:SetMax(max)
+	slider:SetValue(max / 2)
 	slider:SetDecimals(decimals)
+	slider.OldGetValue = slider.GetValue
+	function slider:GetValue()
+		return math.Round(self:OldGetValue(), decimals)
+	end
 	slider:SetConVar(convar)
 	slider:SetDark(self.Dark)
 	return slider
@@ -620,11 +625,25 @@ function VToolkit:CreatePropertySheet()
 	return sheet
 end
 
-function VToolkit:CreateCategoryList()
+function VToolkit:CreateCategoryList(onecategory)
 	local lst = vgui.Create("DCategoryList")
 	lst.OldAdd = lst.Add
 	function lst:Add(str) -- allows the headers to be re-skinned
 		local btn = self:OldAdd(str)
+		if(onecategory) then
+			if(table.Count(self.pnlCanvas:GetChildren()) > 1) then
+				if(btn:GetExpanded()) then
+					btn:Toggle()
+				end
+			end
+			btn.Header.DoClick = function(self)
+				for i,k in pairs(lst.pnlCanvas:GetChildren()) do
+					print(k, k:GetName())
+					if(k:GetExpanded()) then k:Toggle() end
+				end
+				btn:Toggle()
+			end
+		end
 		if(VToolkit:GetSkinComponent("CollapsibleCateogryHeader") != nil) then
 			if(VToolkit:GetSkinComponent("CollapsibleCateogryHeader").Config != nil) then
 				VToolkit:GetSkinComponent("CollapsibleCateogryHeader").Config(btn)

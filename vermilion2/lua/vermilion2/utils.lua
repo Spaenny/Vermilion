@@ -56,6 +56,11 @@ function Vermilion.ParseChatLineForParameters(line)
 			part = ""
 		elseif(not isQuoted and string.find(k, "\"")) then
 			part = k
+			if(string.EndsWith(part, "\"")) then
+				table.insert(parts2, string.Replace(part, "\"", ""))
+				part = ""
+				continue
+			end
 			isQuoted = true
 		elseif(isQuoted) then
 			part = part .. " " .. k
@@ -70,7 +75,8 @@ function Vermilion.ParseChatLineForParameters(line)
 			table.insert(parts, k)
 		--end
 	end
+	local cmdName = parts[1]
 	table.remove(parts, 1)
 	
-	return parts
+	return cmdName, parts
 end

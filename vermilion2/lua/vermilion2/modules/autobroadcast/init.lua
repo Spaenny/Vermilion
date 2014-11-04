@@ -107,7 +107,7 @@ function MODULE:InitClient()
 				return Vermilion:HasPermission("manage_auto_broadcast")
 			end,
 			Builder = function(panel)
-				local listings = VToolkit:CreateList({"Text", "Interval"}, false)
+				local listings = VToolkit:CreateList(MODULE:TranslateTable({ "list:text", "list:interval" }), false)
 				listings:SetPos(10, 30)
 				listings:SetSize(765, 460)
 				listings:SetParent(panel)
@@ -116,12 +116,12 @@ function MODULE:InitClient()
 				
 				panel.MessageTable = listings
 				
-				local listingsLabel = VToolkit:CreateHeaderLabel(listings, "Auto-Broadcast Listings")
+				local listingsLabel = VToolkit:CreateHeaderLabel(listings, MODULE:TranslateStr("list:title"))
 				listingsLabel:SetParent(panel)
 				
-				local removeListing = VToolkit:CreateButton("Remove Listing", function()
+				local removeListing = VToolkit:CreateButton(MODULE:TranslateStr("remove"), function()
 					if(table.Count(listings:GetSelected()) == 0) then
-						VToolkit:CreateErrorDialog("Must select at least one listing to remove.")
+						VToolkit:CreateErrorDialog(MODULE:TranslateStr("remove:g1"))
 						return
 					end
 					local tab = {}
@@ -161,14 +161,14 @@ function MODULE:InitClient()
 				addMessagePanel:SetPos(panel:GetWide(), 0)
 				addMessagePanel:SetParent(panel)
 				panel.AddMessagePanel = addMessagePanel
-				local cAMPanel = VToolkit:CreateButton("Close", function()
+				local cAMPanel = VToolkit:CreateButton(MODULE:TranslateStr("close"), function()
 					addMessagePanel:MoveTo(panel:GetWide(), 0, 0.25, 0, -3)
 				end)
 				cAMPanel:SetPos(10, 10)
 				cAMPanel:SetSize(50, 20)
 				cAMPanel:SetParent(addMessagePanel)
 				
-				local addMessageButton = VToolkit:CreateButton("New Listing...", function()
+				local addMessageButton = VToolkit:CreateButton(MODULE:TranslateStr("new"), function()
 					addMessagePanel:MoveTo((panel:GetWide() / 2) - 50, 0, 0.25, 0, -3)
 				end)
 				addMessageButton:SetPos(10, 500)
@@ -176,7 +176,7 @@ function MODULE:InitClient()
 				addMessageButton:SetParent(panel)
 				
 				
-				local messageBox = VToolkit:CreateTextbox("Your message here.")
+				local messageBox = VToolkit:CreateTextbox("")
 				messageBox:SetPos(10, 40)
 				messageBox:SetSize(425, 410)
 				messageBox:SetParent(addMessagePanel)
@@ -184,14 +184,14 @@ function MODULE:InitClient()
 				
 				
 				
-				local timeLabel = VToolkit:CreateLabel("Broadcast every:")
+				local timeLabel = VToolkit:CreateLabel(MODULE:TranslateStr("new:interval"))
 				timeLabel:SetPos(10, 470)
 				timeLabel:SetDark(true)
 				timeLabel:SetParent(addMessagePanel)
 				
 				
 				
-				local daysLabel = VToolkit:CreateLabel("Days:")
+				local daysLabel = VToolkit:CreateLabel(MODULE:TranslateStr("dayslabel"))
 				daysLabel:SetPos(10 + ((64 - daysLabel:GetWide()) / 2), 490)
 				daysLabel:SetParent(addMessagePanel)
 				
@@ -201,7 +201,7 @@ function MODULE:InitClient()
 				
 				
 				
-				local hoursLabel = VToolkit:CreateLabel("Hours:")
+				local hoursLabel = VToolkit:CreateLabel(MODULE:TranslateStr("hourslabel"))
 				hoursLabel:SetPos(84 + ((64 - hoursLabel:GetWide()) / 2), 490)
 				hoursLabel:SetParent(addMessagePanel)
 				
@@ -217,7 +217,7 @@ function MODULE:InitClient()
 				
 				
 				
-				local minsLabel = VToolkit:CreateLabel("Minutes:")
+				local minsLabel = VToolkit:CreateLabel(MODULE:TranslateStr("minuteslabel"))
 				minsLabel:SetPos(158 + ((64 - minsLabel:GetWide()) / 2), 490)
 				minsLabel:SetParent(addMessagePanel)
 				
@@ -233,7 +233,7 @@ function MODULE:InitClient()
 				
 				
 				
-				local secondsLabel = VToolkit:CreateLabel("Seconds:")
+				local secondsLabel = VToolkit:CreateLabel(MODULE:TranslateStr("secondslabel"))
 				secondsLabel:SetPos(232 + ((64 - secondsLabel:GetWide()) / 2), 490)
 				secondsLabel:SetParent(addMessagePanel)
 				
@@ -247,7 +247,7 @@ function MODULE:InitClient()
 					end
 				end
 				
-				local addListingButton = VToolkit:CreateButton("Add Listing", function()
+				local addListingButton = VToolkit:CreateButton(MODULE:TranslateStr("new:add"), function()
 					local time = 0
 					-- seconds per year = 31557600
 					-- average seconds per month = 2592000 
@@ -261,7 +261,7 @@ function MODULE:InitClient()
 					time = time + (daysWang:GetValue() * 86400)
 					
 					if(time == 0) then
-						VToolkit:CreateErrorDialog("Must have interval greater than zero.")
+						VToolkit:CreateErrorDialog(MODULE:TranslateStr("new:gz"))
 						return
 					end
 					

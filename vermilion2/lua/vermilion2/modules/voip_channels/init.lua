@@ -184,6 +184,7 @@ function MODULE:InitServer()
 		if(IsValid(listener) and IsValid(talker)) then
 			local vListener = Vermilion:GetUser(listener)
 			local vTalker = Vermilion:GetUser(talker)
+			if(vListener == nil or vTalker == nil) then return end
 			if(vListener.VoIPChannel == nil) then
 				vListener.VoIPChannel = "Default"
 			end

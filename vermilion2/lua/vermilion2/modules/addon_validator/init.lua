@@ -71,6 +71,7 @@ end
 function MODULE:InitClient()
 	
 	CreateClientConVar("vermilion_addonnag_do_not_ask", 0, true, false)
+	CreateClientConVar("vermilion_addonnag_debug", 0, true, false)
 	
 	self:NetHook("VAddonListRequest", function()
 		local serverAddons = net.ReadTable()
@@ -91,13 +92,13 @@ function MODULE:InitClient()
 		
 		Vermilion.Log("Missing " .. tostring(table.Count(missingAddons)) .. " addons!")
 		
-		if(table.Count(missingAddons) > 0) then
+		if(table.Count(missingAddons) > 0 or GetConVarNumber("vermilion_addonnag_debug") != 0) then
 			local frame = VToolkit:CreateFrame({
 				["size"] = { 600, 600 },
 				["pos"] = { (ScrW() / 2) - 300, (ScrH() / 2) - 300},
 				["closeBtn"] = true,
 				["draggable"] = false,
-				["title"] = "Vermilion Addon Alert",
+				["title"] = MODULE:TranslateStr("title"),
 				["bgBlur"] = true
 			})
 			frame:MakePopup()
@@ -119,21 +120,20 @@ function MODULE:InitClient()
 				ln.wsid = k.wsid
 			end
 			
-			local alertText = VToolkit:CreateLabel("Vermilion has detected that you are missing some addons.\n\nSubscribing to these addons will significantly decrease the time taken to connect to this server as you will not have to download the addons each time you connect, and will also solve any missing textures that you are seeing as a result of missing these addons!\n\nPlease consider fixing this by using the list below!")
+			local alertText = vgui.Create("DTextEntry")
+			alertText:SetDrawBackground(false)
+			alertText:SetMultiline(true)
 			alertText:SetPos(10, 10)
 			alertText:SetWide(panel:GetWide() - 20)
+			alertText:SetTall(missingAddonsList:GetY() - 10)
 			alertText:SetParent(panel)
-			alertText:SetAutoStretchVertical(true)
-			alertText:SetWrap(true)
+			alertText:SetValue(MODULE:TranslateStr("windowtext"))
+			alertText:SetEditable(false)
 			
 			
-			local openInWSButton = VToolkit:CreateButton("Open Workshop Page", function(self)
-				if(table.Count(missingAddonsList:GetSelected()) > 1) then
-					VToolkit:CreateErrorDialog("Can only open the workshop page for one addon at a time!")
-					return
-				end
+			local openInWSButton = VToolkit:CreateButton(MODULE:TranslateStr("open_workshop_page"), function(self)
 				if(table.Count(missingAddonsList:GetSelected()) == 0) then
-					VToolkit:CreateErrorDialog("Must select at least one addon to open the workshop page for!")
+					VToolkit:CreateErrorDialog(MODULE:TranslateStr("open_workshop_page:g1"))
 					return
 				end
 				steamworks.ViewFile(missingAddonsList:GetSelected()[1].wsid)
@@ -143,11 +143,11 @@ function MODULE:InitClient()
 			openInWSButton:SetParent(panel)
 			
 			
-			local donotaskButton = VToolkit:CreateButton("Close and do not ask again", function(self)
-				VToolkit:CreateConfirmDialog("Are you sure?\nThis will take effect on every server you join.\nTo reset it, type \"vermilion_addonnag_do_not_ask 0\" into the console!", function()
+			local donotaskButton = VToolkit:CreateButton(MODULE:TranslateStr("dna"), function(self)
+				VToolkit:CreateConfirmDialog(MODULE:TranslateStr("dna:confirm"), function()
 					RunConsoleCommand("vermilion_addonnag_do_not_ask", "1")
 					frame:Close()
-				end, { Confirm = "Yes", Deny = "No", Default = false })
+				end, { Confirm = MODULE:TranslateStr("yes"), Deny = MODULE:TranslateStr("no"), Default = false })
 			end)
 			donotaskButton:SetPos(330, panel:GetTall() - 50)
 			donotaskButton:SetSize(180, 35)

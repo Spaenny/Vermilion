@@ -200,21 +200,147 @@ function MODULE:AddOption(mod, name, guitext, typ, category, defaultval, permiss
 	table.insert(options, table.Merge({ Module = mod, Name = name, GuiText = guitext, Type = typ, Category = category, Default = defaultval, Permission = permission}, otherdat))
 end
 
+MODULE.MOTDVars = {}
+
+function MODULE:AddMOTDVar(name, func, desc)
+	if(CLIENT) then
+		self.MOTDVars[name] = desc
+		return
+	end
+	self.MOTDVars[name] = func
+end
+
+function MODULE:InitShared()
+	local funcs = {
+		{
+			Name = "servername",
+			Description = "The hostname of the server.",
+			Func = function() return GetHostName() end
+		},
+		{
+			Name = "activeplayers",
+			Description = "The number of players active on the server.",
+			Func = function() return table.Count(player.GetAll()) end
+		},
+		{
+			Name = "maxplayers",
+			Description = "The maximum number of players that can join the server.",
+			Func = function() return game.MaxPlayers() end
+		},
+		{
+			Name = "map",
+			Description = "The name of the current map",
+			Func = function() return game.GetMap() end
+		},
+		{
+			Name = "vermilion_version",
+			Description = "The version of the Vermilion Core Engine.",
+			Func = function() return Vermilion.GetVersion() end
+		},
+		{
+			Name = "gamemode",
+			Description = "The name of the current gamemode.",
+			Func = function() return engine.ActiveGamemode() end
+		},
+		{
+			Name = "gamemode_upper",
+			Description = "The name of the current gamemode in sentence case.",
+			Func = function() return string.SetChar(engine.ActiveGamemode(), 1, string.upper(string.GetChar(engine.ActiveGamemode(), 1))) end
+		},
+		{
+			Name = "time",
+			Description = "The time formatted as h:m:s am/pm on d/m/y",
+			Func = function() return os.date("%I:%M:%S %p on %d/%m/%Y") end
+		},
+		{
+			Name = "server_os",
+			Description = "The name of the server operating system.",
+			Func = function()
+				if(system.IsWindows()) then
+					return "Windows"
+				elseif(system.IsOSX()) then
+					return "OS X"
+				elseif(system.IsLinux()) then
+					return "Linux"
+				end
+			end
+		},
+		{
+			Name = "gmod_version_raw",
+			Description = "The raw GMod version number.",
+			Func = function() return VERSION end
+		},
+		{
+			Name = "gmod_version",
+			Description = "The nice GMod version number.",
+			Func = function() return VERSIONSTR end
+		},
+		{
+			Name = "gmod_branch",
+			Description = "Active GMod branch.",
+			Func = function() return BRANCH end
+		},
+		{
+			Name = "vermilion_menu_nag",
+			Description = "Default nag asking the player to bind a key to the Vermilion Menu.",
+			Func = function() return "Please bind a key to \"vermilion_menu\" to access many helpful features!" end
+		},
+		{
+			Name = "player_rank",
+			Description = "The rank of the joining player.",
+			Func = function(vplayer) return Vermilion:GetUser(vplayer):GetRankName() end
+		},
+		{
+			Name = "player_team",
+			Description = "The team of the joining player.",
+			Func = function(vplayer) return vplayer:Team() end
+		},
+		{
+			Name = "player_steamid",
+			Description = "The SteamID of the joining player.",
+			Func = function(vplayer) return vplayer:SteamID() end
+		},
+		{
+			Name = "player_steamid64",
+			Description = "The 64-bit SteamID of the joining player.",
+			Func = function(vplayer) return vplayer:SteamID64() end
+		},
+		{
+			Name = "player_name",
+			Description = "The name of the joining player.",
+			Func = function(vplayer) return vplayer:GetName() end
+		},
+		{
+			Name = "player_ip",
+			Description = "The IP Address of the joining player.",
+			Func = function(vplayer) return vplayer:IPAddress() end
+		}
+	}
+	
+	for i,k in pairs(funcs) do
+		self:AddMOTDVar(k.Name, k.Func, k.Description)
+	end
+end
+
 
 function MODULE:RegisterChatCommands()
 	
-	Vermilion:AddChatCommand({
+	Vermilion:AddChatCommand{
 		Name = "motd",
 		Description = "Request the MOTD again.",
 		Function = function(sender, text, log, glog)
 			MODULE:NetStart("VRequestMOTD")
-			net.WriteString(MODULE:GetData("motd", "", true))
+			local str = MODULE:GetData("motd", "", true)
+			for i,k in pairs(MODULE.MOTDVars) do
+				str = string.Replace(str, "%" .. i .. "%", tostring(k(vplayer)))
+			end
+			net.WriteString(str)
 			net.WriteInt(MODULE:GetData("motd_type", 1, true), 32)
 			net.Send(sender)
 		end
-	})
+	}
 	
-	Vermilion:AddChatCommand({
+	Vermilion:AddChatCommand{
 		Name = "noclip",
 		Description = "Toggles noclip for the player",
 		Syntax = "[player] => [value]",
@@ -278,9 +404,9 @@ function MODULE:RegisterChatCommands()
 			end
 			return sender:GetName() .. " toggled the noclip state for all players!"
 		end
-	})
+	}
 	
-	Vermilion:AddChatCommand({
+	Vermilion:AddChatCommand{
 		Name = "falldamage",
 		Description = "Toggles falldamage for the player",
 		Syntax = "[player] => [value]",
@@ -344,10 +470,10 @@ function MODULE:RegisterChatCommands()
 			end
 			return sender:GetName() .. " toggled the falldamage state for all players!"
 		end
-	})
+	}
 	
 	
-	Vermilion:AddChatCommand({
+	Vermilion:AddChatCommand{
 		Name = "damagemode",
 		Description = "Toggles damage for the player",
 		Syntax = "[player] => [value]",
@@ -411,9 +537,9 @@ function MODULE:RegisterChatCommands()
 			end
 			return sender:GetName() .. " toggled the damage state for all players!"
 		end
-	})
+	}
 	
-	Vermilion:AddChatCommand({
+	Vermilion:AddChatCommand{
 		Name = "flashlight",
 		Description = "Toggles flashlight for the player",
 		Syntax = "[player] => [value]",
@@ -477,9 +603,9 @@ function MODULE:RegisterChatCommands()
 			end
 			return sender:GetName() .. " toggled the flashlight state for all players!"
 		end
-	})
+	}
 	
-	Vermilion:AddChatCommand({
+	Vermilion:AddChatCommand{
 		Name = "uammo",
 		Description = "Toggles unlimited ammo for the player",
 		Syntax = "[player] => [value]",
@@ -543,7 +669,7 @@ function MODULE:RegisterChatCommands()
 			end
 			return sender:GetName() .. " toggled the unlimited ammo state for all players!"
 		end
-	})
+	}
 	
 end
 
@@ -607,7 +733,11 @@ function MODULE:InitServer()
 	
 	self:NetHook("VRequestMOTD", function(vplayer)
 		MODULE:NetStart("VRequestMOTD")
-		net.WriteString(MODULE:GetData("motd", "", true))
+		local str = MODULE:GetData("motd", "", true)
+		for i,k in pairs(MODULE.MOTDVars) do
+			str = string.Replace(str, "%" .. i .. "%", tostring(k(vplayer)))
+		end
+		net.WriteString(str)
 		net.WriteInt(MODULE:GetData("motd_type", 1, true), 32)
 		net.Send(vplayer)
 	end)
@@ -1132,7 +1262,28 @@ function MODULE:InitClient()
 			panel.TypeCombo = typCombo
 			
 			local motdVars = VToolkit:CreateButton("Show Variables", function()
+				local motdpanel2 = VToolkit:CreateFrame(
+					{
+						['size'] = { 500, 300 },
+						['pos'] = { (ScrW() / 2) - 250, (ScrH() / 2) - 150 },
+						['closeBtn'] = true,
+						['draggable'] = true,
+						['title'] = "MOTD Variables",
+						['bgBlur'] = false
+					}
+				)
+				local varList = VToolkit:CreateList({"Name", "Description"})
+				varList:SetPos(10, 30)
+				varList:SetSize(480, 260)
+				varList:SetParent(motdpanel2)
 				
+				for i,k in pairs(MODULE.MOTDVars) do
+					varList:AddLine(i, k)
+				end
+				
+				motdpanel2:MakePopup()
+				--motdpanel2:DoModal()
+				motdpanel2:SetAutoDelete(true)
 			end)
 			motdVars:SetPos(370, 415)
 			motdVars:SetSize(120, 20)

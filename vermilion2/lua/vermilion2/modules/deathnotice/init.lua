@@ -154,7 +154,7 @@ function MODULE:InitServer()
 						
 						Vermilion:BroadcastNotification(victim:GetName() .. " was killed by " .. attacker:GetName() .. " with a " .. weapon .. " from " .. tostring(distance) .. "m away" .. shotat .. recordtext)
 						self:GetData("longest_shot", {}, true)[weapon] = distance
-						self:SetData("longest_shot_holder", {}, true)[weapon] = attacker:GetName()
+						self:GetData("longest_shot_holder", {}, true)[weapon] = attacker:GetName()
 					else
 						Vermilion:BroadcastNotification(victim:GetName() .. " was killed by " .. attacker:GetName() .. " with a " .. weapon .. " from " .. tostring(distance) .. "m away" .. shotat)
 					end
@@ -218,7 +218,7 @@ function MODULE:InitServer()
 						end
 						Vermilion:BroadcastNotification(victim:GetName() .. " was blown up by " .. attacker:GetName() .. " with a " .. weapon .. " from " .. tostring(distance) .. "m away." .. recordtext)
 						self:GetData("longest_shot", {}, true)[weapon] = distance
-						self:SetData("longest_shot_holder", {}, true)[weapon] = attacker:GetName()
+						self:GetData("longest_shot_holder", {}, true)[weapon] = attacker:GetName()
 					else
 						Vermilion:BroadcastNotification(victim:GetName() .. " was blown up by " .. attacker:GetName() .. " with a " .. weapon .. " from " .. tostring(distance) .. "m away.")
 					end

@@ -692,7 +692,7 @@ function MODULE:InitClient()
 			Name = "Permission Editor",
 			Order = 1,
 			Category = "ranks",
-			Size = { 900, 560 },
+			Size = { 1000, 560 },
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_ranks")
 			end,
@@ -725,7 +725,7 @@ function MODULE:InitClient()
 						net.SendToServer()
 					end
 				end)
-				givePermission:SetPos(480, 120)
+				givePermission:SetPos(530, 120)
 				givePermission:SetSize(150, 20)
 				givePermission:SetParent(panel)
 				givePermission:SetEnabled(false)
@@ -740,7 +740,7 @@ function MODULE:InitClient()
 						rankPermissions:RemoveLine(k:GetID())
 					end
 				end)
-				takePermission:SetPos(480, 150)
+				takePermission:SetPos(530, 150)
 				takePermission:SetSize(150, 20)
 				takePermission:SetParent(panel)
 				takePermission:SetEnabled(false)
@@ -768,7 +768,7 @@ function MODULE:InitClient()
 				
 				rankPermissions = VToolkit:CreateList({ "Name", "Module" })
 				rankPermissions:SetPos(220, 30)
-				rankPermissions:SetSize(240, panel:GetTall() - 40)
+				rankPermissions:SetSize(290, panel:GetTall() - 40)
 				rankPermissions:SetParent(panel)
 				panel.RankPermissions = rankPermissions
 				
@@ -785,8 +785,8 @@ function MODULE:InitClient()
 				
 				
 				allPermissions = VToolkit:CreateList({"Name", "Module"})
-				allPermissions:SetPos(panel:GetWide() - 250, 30)
-				allPermissions:SetSize(240, panel:GetTall() - 40)
+				allPermissions:SetPos(panel:GetWide() - 300, 30)
+				allPermissions:SetSize(290, panel:GetTall() - 40)
 				allPermissions:SetParent(panel)
 				panel.AllPermissions = allPermissions
 				

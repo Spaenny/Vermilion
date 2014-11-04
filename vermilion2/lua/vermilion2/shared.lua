@@ -65,6 +65,7 @@ function Vermilion:RegisterLanguage(body)
 end
 
 function Vermilion:TranslateStr(key, values, forplayer)
+	if(CLIENT and forplayer == nil) then forplayer = LocalPlayer() end
 	if(self.Languages[self.GetActiveLanguage(forplayer)] != nil) then
 		return self.Languages[self.GetActiveLanguage(forplayer)]:TranslateStr(key, values or {})
 	end
@@ -303,6 +304,21 @@ function Vermilion:CreateBaseModule()
 			end
 		end
 		
+		function base:TranslateStr(key, parameters, foruser)
+			local translation = Vermilion:TranslateStr(self.ID .. ":" .. key, parameters, foruser)
+			if(translation != self.ID .. ":" .. key) then return translation end
+			return Vermilion:TranslateStr(key, parameters, foruser)
+		end
+		
+		function base:TranslateTable(keys, parameters, foruser)
+			local tab = {}
+			parameters = parameters or {}
+			for i,k in pairs(keys) do
+				tab[i] = self:TranslateStr(k, parameters[i], foruser)
+			end
+			return tab
+		end
+		
 		
 		function base:DistributeEvent(event, parameters) end
 		
@@ -421,6 +437,14 @@ end
 	ERROR = Red ("Error Triangle")
 	HINT = Green ("Help Orb")
 ]]--
+
+
+Vermilion:AddHook(Vermilion.Event.MOD_LOADED, "AddJoinLeaveOption", true, function()
+	local mod = Vermilion:GetModule("server_settings")
+	if(mod != nil) then
+		mod:AddOption("Vermilion", "joinleave_enabled", "Enable Join/Leave messages", "Checkbox", "Misc", true)
+	end
+end)
 
 if(CLIENT) then
 	local notifications = {}
