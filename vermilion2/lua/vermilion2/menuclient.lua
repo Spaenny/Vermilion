@@ -144,54 +144,115 @@ MENU:AddPage({
 	Order = 1,
 	Category = "basic",
 	Size = { 700, 560 },
-	Builder = function(panel)
-		local mlist = VToolkit:CreateList({"Name"})
-		mlist:SetPos(10, 10)
-		mlist:SetSize(200, 540)
+	Builder = function(panel, paneldata)
+		local mlist = VToolkit:CreateList({
+			cols = {
+				"Name"
+			}
+		})
+		mlist:Dock(LEFT)
+		mlist:DockMargin(10, 10, 0, 10)
 		mlist:SetParent(panel)
-		panel.ModuleList = mlist
+		mlist:SetWide(200)
+		paneldata.ModuleList = mlist
+		
+		local infopanel = vgui.Create("DPanel")
+		infopanel:SetDrawBackground(false)
+		infopanel:Dock(FILL)
+		infopanel:DockMargin(10, 10, 10, 10)
+		infopanel:SetParent(panel)
 		
 		local title = VToolkit:CreateLabel("Click on a module...")
 		title:SetFont("DermaLarge")
 		title:SizeToContents()
-		title:SetPos(220, 10)
-		title:SetParent(panel)
-		panel.TitleLabel = title
+		title:Dock(TOP)
+		title:SetParent(infopanel)
+		paneldata.TitleLabel = title
 		
 		local author = VToolkit:CreateLabel("")
-		author:SetPos(223, 42)
-		author:SetParent(panel)
-		panel.AuthorLabel = author
+		author:Dock(TOP)
+		author:SetParent(infopanel)
+		paneldata.AuthorLabel = author
+		
+		local enablerPanel = vgui.Create("DPanel")
+		enablerPanel:SetParent(infopanel)
+		enablerPanel:Dock(TOP)
+		enablerPanel:SetTall(20)
+		enablerPanel:DockMargin(0, 10, 0, 10)
+		enablerPanel:SetDrawBackground(false)
+		enablerPanel:SetVisible(false)
+
+		paneldata.EnablerPanel = enablerPanel
+		
+		local enableCB = VToolkit:CreateCheckBox("Enabled")
+		enableCB:Dock(FILL)
+		enableCB:SetParent(enablerPanel)
+		enableCB.CanUpdate = true
+		function enableCB:OnChange(val)
+			if(not self.CanUpdate) then return end
+			net.Start("VModuleDataEnableChange")
+			net.WriteString(self.ModuleID)
+			net.WriteBoolean(val)
+			net.SendToServer()
+		end
+		paneldata.EnableCB = enableCB
+		
 		
 		local description = vgui.Create("DTextEntry")
 		description:SetDrawBackground(false)
 		description:SetMultiline(true)
-		description:SetPos(220, 62)
-		description:SetSize(460, 398)
-		description:SetParent(panel)
+		description:Dock(TOP)
+		description:SetTall(50)
+		description:DockMargin(0, 10, 0, 10)
+		description:SetParent(infopanel)
 		description:SetValue("")
 		description:SetEditable(false)
-		panel.Description = description
+		paneldata.Description = description
+		
+		
+		
+		
+		local scrollp = vgui.Create("DScrollPanel")
+		scrollp:SetParent(infopanel)
+		scrollp:Dock(FILL)
+		scrollp:DockMargin(0, 10, 0, 0)
+		scrollp:SetVisible(false)
+		
+		net.Receive("VModuleDataUpdate", function()
+			enableCB.CanUpdate = false
+			enableCB:SetValue(net.ReadBoolean())
+			enableCB.CanUpdate = true
+		end)
+		
 	end,
-	Updater = function(panel)
-		if(table.Count(panel.ModuleList:GetLines()) == 0) then
+	Updater = function(panel, paneldata)
+		if(table.Count(paneldata.ModuleList:GetLines()) == 0) then
 			for i,k in pairs(Vermilion.Modules) do
-				local ln = panel.ModuleList:AddLine(k.Name)
+				local ln = paneldata.ModuleList:AddLine(k.Name)
 				ln.OldClick = ln.OnMousePressed
 				function ln:OnMousePressed(mc)
-					panel.TitleLabel:SetText(k.Name)
-					panel.TitleLabel:SizeToContents()
+					paneldata.TitleLabel:SetText(k.Name)
+					paneldata.TitleLabel:SizeToContents()
 					
-					panel.AuthorLabel:SetText("Author: " .. k.Author)
-					panel.AuthorLabel:SizeToContents()
+					paneldata.AuthorLabel:SetText("Author: " .. k.Author)
+					paneldata.AuthorLabel:SizeToContents()
 					
-					panel.Description:SetValue(k.Description)
-					panel.Description:SetEditable(false)
+					paneldata.Description:SetValue(k.Description)
+					paneldata.Description:SetEditable(false)
+					
+					paneldata.EnableCB.ModuleID = k.ID
+					
+					
+					paneldata.EnablerPanel:SetVisible(Vermilion:HasPermission("*") and not k.PreventDisable)
+					
+					net.Start("VModuleDataUpdate")
+					net.WriteString(k.ID)
+					net.SendToServer()
 					
 					self:OldClick(mc)
 				end
 			end
-			panel.ModuleList:SortByColumn(panel.ModuleList.Columns[1]:GetColumnID())
+			paneldata.ModuleList:SortByColumn(paneldata.ModuleList.Columns[1]:GetColumnID())
 		end
 	end
 })
@@ -438,7 +499,7 @@ Vermilion:AddHook(Vermilion.Event.MOD_POST, "MenuClientBuild", true, function()
 		xpcall(pageData.Builder, function(err)
 			Vermilion.Log("Error building page: " .. err)
 			debug.Trace()
-		end, panel)
+		end, panel, pageData)
 		
 		btn:SetVisible(pageData.Conditional(LocalPlayer()))
 		
@@ -523,7 +584,7 @@ timer.Simple(1, function()
 				xpcall(k.Updater, function(err)
 					Vermilion.Log("Failed to update panel (" .. k.ID .. "): " .. err)
 					debug.Trace()
-				end, k.Panel)
+				end, k.Panel, k)
 			end
 		end
 		
@@ -549,7 +610,7 @@ timer.Simple(1, function()
 			MENU.ContentPanel:SetKeyboardInputEnabled(false)
 			MENU.IsOpen = false
 			for i,k in pairs(MENU.Pages) do
-				local suc, err = pcall(k.Destroyer, k.Panel)
+				local suc, err = pcall(k.Destroyer, k.Panel, k)
 				if(not suc) then print(err) end
 			end
 			hook.Run(Vermilion.Event.MENU_CLOSED)

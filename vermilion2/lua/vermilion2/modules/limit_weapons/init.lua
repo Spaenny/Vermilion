@@ -123,11 +123,11 @@ end
 function MODULE:InitClient()
 
 	self:NetHook("VGetWeaponLimits", function()
-		if(not IsValid(Vermilion.Menu.Pages["limit_weapons"].Panel.RankList)) then return end
-		if(net.ReadString() != Vermilion.Menu.Pages["limit_weapons"].Panel.RankList:GetSelected()[1]:GetValue(1)) then return end
+		if(not IsValid(Vermilion.Menu.Pages["limit_weapons"].RankList)) then return end
+		if(net.ReadString() != Vermilion.Menu.Pages["limit_weapons"].RankList:GetSelected()[1]:GetValue(1)) then return end
 		local data = net.ReadTable()
-		local blocklist = Vermilion.Menu.Pages["limit_weapons"].Panel.RankBlockList
-		local weps = Vermilion.Menu.Pages["limit_weapons"].Panel.Weapons
+		local blocklist = Vermilion.Menu.Pages["limit_weapons"].RankBlockList
+		local weps = Vermilion.Menu.Pages["limit_weapons"].Weapons
 		if(IsValid(blocklist)) then
 			blocklist:Clear()
 			for i,k in pairs(data) do
@@ -151,7 +151,7 @@ function MODULE:InitClient()
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_weapon_limits")
 			end,
-			Builder = function(panel)
+			Builder = function(panel, paneldata)
 				local blockWeapon = nil
 				local unblockWeapon = nil
 				local rankList = nil
@@ -174,21 +174,28 @@ function MODULE:InitClient()
 					["weapon_stunstick"] = "models/weapons/w_stunbaton.mdl",
 					["weapon_physgun"] = "models/weapons/w_Physics.mdl"
 				}
-				function panel.getMdl(class)
+				function paneldata.getMdl(class)
 					if(default[class] != nil) then return default[class] end
 					return weapons.Get(class).WorldModel
 				end
 				
-				panel.PreviewPanel = VToolkit:CreatePreviewPanel("model", panel, function(ent)
+				paneldata.PreviewPanel = VToolkit:CreatePreviewPanel("model", panel, function(ent)
 					ent:SetPos(Vector(20, 20, 45))
 				end)
 			
 				
-				rankList = VToolkit:CreateList({ "Name" }, false, false)
+				rankList = VToolkit:CreateList({
+					cols = {
+						"Name"
+					},
+					multiselect = false,
+					sortable = false,
+					centre = true
+				})
 				rankList:SetPos(10, 30)
 				rankList:SetSize(200, panel:GetTall() - 40)
 				rankList:SetParent(panel)
-				panel.RankList = rankList
+				paneldata.RankList = rankList
 				
 				local rankHeader = VToolkit:CreateHeaderLabel(rankList, "Ranks")
 				rankHeader:SetParent(panel)
@@ -201,11 +208,15 @@ function MODULE:InitClient()
 					net.SendToServer()
 				end
 				
-				rankBlockList = VToolkit:CreateList({ "Name" })
+				rankBlockList = VToolkit:CreateList({
+					cols = {
+						"Name"
+					}
+				})
 				rankBlockList:SetPos(220, 30)
 				rankBlockList:SetSize(240, panel:GetTall() - 40)
 				rankBlockList:SetParent(panel)
-				panel.RankBlockList = rankBlockList
+				paneldata.RankBlockList = rankBlockList
 				
 				local rankBlockListHeader = VToolkit:CreateHeaderLabel(rankBlockList, "Blocked Weapons")
 				rankBlockListHeader:SetParent(panel)
@@ -217,11 +228,15 @@ function MODULE:InitClient()
 				VToolkit:CreateSearchBox(rankBlockList)
 				
 				
-				allWeapons = VToolkit:CreateList({"Name"})
+				allWeapons = VToolkit:CreateList({
+					cols = {
+						"Name"
+					}
+				})
 				allWeapons:SetPos(panel:GetWide() - 250, 30)
 				allWeapons:SetSize(240, panel:GetTall() - 40)
 				allWeapons:SetParent(panel)
-				panel.AllWeapons = allWeapons
+				paneldata.AllWeapons = allWeapons
 				
 				local allWeaponsHeader = VToolkit:CreateHeaderLabel(allWeapons, "All Weapons")
 				allWeaponsHeader:SetParent(panel)
@@ -268,60 +283,60 @@ function MODULE:InitClient()
 				unblockWeapon:SetParent(panel)
 				unblockWeapon:SetDisabled(true)
 				
-				panel.BlockWeapon = blockWeapon
-				panel.UnblockWeapon = unblockWeapon
+				paneldata.BlockWeapon = blockWeapon
+				paneldata.UnblockWeapon = unblockWeapon
 				
 				
 			end,
-			Updater = function(panel)
-				if(panel.Weapons == nil) then
-					panel.Weapons = {}
+			Updater = function(panel, paneldata)
+				if(paneldata.Weapons == nil) then
+					paneldata.Weapons = {}
 					for i,k in pairs(list.Get("Weapon")) do
 						local name = k.PrintName
 						if(name == nil or name == "") then
 							name = k.ClassName
 						end
-						table.insert(panel.Weapons, { Name = name, ClassName = k.ClassName })
+						table.insert(paneldata.Weapons, { Name = name, ClassName = k.ClassName })
 					end
 				end
-				if(table.Count(panel.AllWeapons:GetLines()) == 0) then
-					for i,k in pairs(panel.Weapons) do
-						local ln = panel.AllWeapons:AddLine(k.Name)
+				if(table.Count(paneldata.AllWeapons:GetLines()) == 0) then
+					for i,k in pairs(paneldata.Weapons) do
+						local ln = paneldata.AllWeapons:AddLine(k.Name)
 						ln.ClassName = k.ClassName
 						
-						ln.ModelPath = panel.getMdl(k.ClassName)
+						ln.ModelPath = paneldata.getMdl(k.ClassName)
 						
 						ln.OldCursorMoved = ln.OnCursorMoved
 						ln.OldCursorEntered = ln.OnCursorEntered
 						ln.OldCursorExited = ln.OnCursorExited
 						
 						function ln:OnCursorEntered()
-							panel.PreviewPanel:SetVisible(true)
-							panel.PreviewPanel.ModelView:SetModel(ln.ModelPath)
+							paneldata.PreviewPanel:SetVisible(true)
+							paneldata.PreviewPanel.ModelView:SetModel(ln.ModelPath)
 							
 							if(self.OldCursorEntered) then self:OldCursorEntered() end
 						end
 						
 						function ln:OnCursorExited()
-							panel.PreviewPanel:SetVisible(false)
+							paneldata.PreviewPanel:SetVisible(false)
 							
 							if(self.OldCursorExited) then self:OldCursorExited() end
 						end
 						
 						function ln:OnCursorMoved(x,y)
-							if(IsValid(panel.PreviewPanel)) then
+							if(IsValid(paneldata.PreviewPanel)) then
 								local x, y = input.GetCursorPos()
-								panel.PreviewPanel:SetPos(x - 180, y - 117)
+								paneldata.PreviewPanel:SetPos(x - 180, y - 117)
 							end
 							
 							if(self.OldCursorMoved) then self:OldCursorMoved(x,y) end
 						end
 					end
 				end
-				Vermilion:PopulateRankTable(panel.RankList, false, true)
-				panel.RankBlockList:Clear()
-				panel.BlockWeapon:SetDisabled(true)
-				panel.UnblockWeapon:SetDisabled(true)
+				Vermilion:PopulateRankTable(paneldata.RankList, false, true)
+				paneldata.RankBlockList:Clear()
+				paneldata.BlockWeapon:SetDisabled(true)
+				paneldata.UnblockWeapon:SetDisabled(true)
 			end
 		})
 	

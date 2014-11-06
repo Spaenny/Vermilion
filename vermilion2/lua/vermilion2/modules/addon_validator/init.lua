@@ -110,7 +110,14 @@ function MODULE:InitClient()
 			panel:SetPos(10, 35)
 			panel:SetSize(580, 555)
 			
-			local missingAddonsList = VToolkit:CreateList({ "Addon" }, false, true)
+			local missingAddonsList = VToolkit:CreateList({
+				cols = {
+					"Addon"
+				},
+				multiselect = false,
+				sortable = true,
+				centre = true
+			})
 			missingAddonsList:SetPos(10, 120)
 			missingAddonsList:SetSize(250, 420)
 			missingAddonsList:SetParent(panel)

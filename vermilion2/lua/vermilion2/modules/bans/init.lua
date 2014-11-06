@@ -22,6 +22,7 @@ MODULE.Name = "Bans"
 MODULE.ID = "bans"
 MODULE.Description = "Manages the ban system."
 MODULE.Author = "Ned"
+MODULE.PreventDisable = true
 MODULE.Permissions = {
 	"ban_user",
 	"unban_user",
@@ -475,16 +476,16 @@ function MODULE:InitClient()
 	
 	self:NetHook("VGetBanRecords", function()
 		if(not Vermilion.Menu.IsOpen) then return end
-		local panel = Vermilion.Menu.Pages["bans"].Panel
-		panel.UnbanPlayer:SetDisabled(true)
+		local paneldata = Vermilion.Menu.Pages["bans"]
+		paneldata.UnbanPlayer:SetDisabled(true)
 		
-		panel.BanList:Clear()
+		paneldata.BanList:Clear()
 		for i,k in pairs(net.ReadTable()) do
 			local ln = nil
 			if(k.ExpiryTime == 0) then
-				ln = panel.BanList:AddLine(k.Name, os.date("%d/%m/%y %H:%M:%S", k.BanTime), "Never", k.BannerName, k.Reason)
+				ln = paneldata.BanList:AddLine(k.Name, os.date("%d/%m/%y %H:%M:%S", k.BanTime), "Never", k.BannerName, k.Reason)
 			else
-				ln = panel.BanList:AddLine(k.Name, os.date("%d/%m/%y %H:%M:%S", k.BanTime), os.date("%d/%m/%y %H:%M:%S", k.ExpiryTime), k.BannerName, k.Reason)
+				ln = paneldata.BanList:AddLine(k.Name, os.date("%d/%m/%y %H:%M:%S", k.BanTime), os.date("%d/%m/%y %H:%M:%S", k.ExpiryTime), k.BannerName, k.Reason)
 			end
 			ln.BSteamID = k.SteamID
 			ln.BBSteamID = k.BannerSteamID
@@ -492,7 +493,7 @@ function MODULE:InitClient()
 			steamworks.RequestPlayerInfo(util.SteamIDTo64(k.SteamID))
 			if(k.BannerSteamID != "VERMILION") then steamworks.RequestPlayerInfo(util.SteamIDTo64(k.BannerSteamID)) end
 			timer.Simple(3, function()
-				if(not IsValid(panel) or not IsValid(ln)) then
+				if(not IsValid(paneldata.Panel) or not IsValid(ln)) then
 					return
 				end
 				local bannedName = steamworks.GetPlayerName(util.SteamIDTo64(k.SteamID))
@@ -518,16 +519,24 @@ function MODULE:InitClient()
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_bans")
 			end,
-			Builder = function(panel)
+			Builder = function(panel, paneldata)
 				local banPlayer = nil
 				local kickPlayer = nil
 				local unbanPlayer = nil
 			
-				local banList = VToolkit:CreateList({ "Name", "Banned On", "Expires", "Banned By", "Reason" })
+				local banList = VToolkit:CreateList({
+					cols = {
+						"Name",
+						"Banned On",
+						"Expires",
+						"Banned By",
+						"Reason"
+					}
+				})
 				banList:SetPos(10, 30)
 				banList:SetSize(700, panel:GetTall() - 40)
 				banList:SetParent(panel)
-				panel.BanList = banList
+				paneldata.BanList = banList
 				
 				function banList:OnRowSelected(index, line)
 					local enabled = self:GetSelected()[1] == nil
@@ -544,7 +553,7 @@ function MODULE:InitClient()
 				banUserPanel:SetWide((panel:GetWide() / 2) + 55)
 				banUserPanel:SetPos(panel:GetWide(), 0)
 				banUserPanel:SetParent(panel)
-				panel.BanUserPanel = banUserPanel
+				paneldata.BanUserPanel = banUserPanel
 				local cBUPanel = VToolkit:CreateButton("Close", function()
 					banUserPanel:MoveTo(panel:GetWide(), 0, 0.25, 0, -3)
 				end)
@@ -553,11 +562,15 @@ function MODULE:InitClient()
 				cBUPanel:SetParent(banUserPanel)
 				
 				
-				local banUserList = VToolkit:CreateList({ "Name" })
+				local banUserList = VToolkit:CreateList({
+					cols = { 
+						"Name"
+					}
+				})
 				banUserList:SetPos(10, 40)
 				banUserList:SetSize(300, panel:GetTall() - 50)
 				banUserList:SetParent(banUserPanel)
-				panel.BanUserList = banUserList
+				paneldata.BanUserList = banUserList
 				
 				VToolkit:CreateSearchBox(banUserList)
 				
@@ -588,7 +601,7 @@ function MODULE:InitClient()
 				kickUserPanel:SetWide((panel:GetWide() / 2) + 55)
 				kickUserPanel:SetPos(panel:GetWide(), 0)
 				kickUserPanel:SetParent(panel)
-				panel.KickUserPanel = kickUserPanel
+				paneldata.KickUserPanel = kickUserPanel
 				local cKUPanel = VToolkit:CreateButton("Close", function()
 					kickUserPanel:MoveTo(panel:GetWide(), 0, 0.25, 0, -3)
 				end)
@@ -596,11 +609,15 @@ function MODULE:InitClient()
 				cKUPanel:SetSize(50, 20)
 				cKUPanel:SetParent(kickUserPanel)
 				
-				local kickUserList = VToolkit:CreateList({ "Name" })
+				local kickUserList = VToolkit:CreateList({
+					cols = { 
+						"Name"
+					}
+				})
 				kickUserList:SetPos(10, 40)
 				kickUserList:SetSize(300, panel:GetTall() - 50)
 				kickUserList:SetParent(kickUserPanel)
-				panel.KickUserList = kickUserList
+				paneldata.KickUserList = kickUserList
 				
 				VToolkit:CreateSearchBox(kickUserList)
 				
@@ -664,7 +681,7 @@ function MODULE:InitClient()
 				unbanPlayer:SetSize(panel:GetWide() - unbanPlayer:GetX() - 5, 30)
 				unbanPlayer:SetParent(panel)
 				unbanPlayer:SetDisabled(true)
-				panel.UnbanPlayer = unbanPlayer
+				paneldata.UnbanPlayer = unbanPlayer
 				
 				local unbanImg = vgui.Create("DImage")
 				unbanImg:SetImage("icon16/accept.png")
@@ -676,17 +693,17 @@ function MODULE:InitClient()
 				kickUserPanel:MoveToFront()
 				
 			end,
-			Updater = function(panel)
+			Updater = function(panel, paneldata)
 				MODULE:NetCommand("VGetBanRecords")
 				
-				panel.BanUserList:Clear()
-				panel.KickUserList:Clear()
+				paneldata.BanUserList:Clear()
+				paneldata.KickUserList:Clear()
 				for i,k in pairs(VToolkit.GetValidPlayers()) do
-					panel.BanUserList:AddLine(k:GetName())
-					panel.KickUserList:AddLine(k:GetName())
+					paneldata.BanUserList:AddLine(k:GetName())
+					paneldata.KickUserList:AddLine(k:GetName())
 				end
-				panel.BanUserPanel:MoveTo(panel:GetWide(), 0, 0.25, 0, -3)
-				panel.KickUserPanel:MoveTo(panel:GetWide(), 0, 0.25, 0, -3)
+				paneldata.BanUserPanel:MoveTo(panel:GetWide(), 0, 0.25, 0, -3)
+				paneldata.KickUserPanel:MoveTo(panel:GetWide(), 0, 0.25, 0, -3)
 			end
 		})
 end

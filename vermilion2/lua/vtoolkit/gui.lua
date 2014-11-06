@@ -569,9 +569,18 @@ function VToolkit:CreateTextInput(text, completeFunc)
 	return panel
 end
 
-function VToolkit:CreateList(cols, multiselect, sortable, colrunner)
-	if(sortable == nil) then sortable = true end
-	if(multiselect == nil) then multiselect = true end
+local listDefaults = {
+	{ "cols", {} },
+	{ "sortable", true },
+	{ "multiselect", true },
+	{ "centre", false },
+	{ "colrunner", function() end }
+}
+
+function VToolkit:CreateList(data)
+	for i,k in pairs(listDefaults) do
+		if(data[k[1]] == nil) then data[k[1]] = k[2] end
+	end
 	local lst = vgui.Create("DListView")
 	function lst:DataLayout()
 		local y = 0
@@ -588,14 +597,25 @@ function VToolkit:CreateList(cols, multiselect, sortable, colrunner)
 		end
 		return y
 	end
-	lst:SetMultiSelect(multiselect)
-	for i,col in pairs(cols) do
+	lst:SetMultiSelect(data.multiselect)
+	for i,col in pairs(data.cols) do
 		local colimpl = lst:AddColumn(col)
-		if(isfunction(colrunner)) then
-			colrunner(i, colimpl)
+		if(isfunction(data.colrunner)) then
+			data.colrunner(i, colimpl)
 		end
 	end
-	if(not sortable) then
+	
+	lst.OldAddLineb = lst.AddLine
+	function lst:AddLine(...)
+		local ln = self:OldAddLineb(...)
+		if(not data.centre) then return ln end
+		for i,k in pairs(ln.Columns) do
+			k:SetContentAlignment(5)
+		end
+		return ln
+	end
+	
+	if(not data.sortable) then
 		lst:SetSortable(false)
 		function lst:SortByColumn(ColumnID, Desc) end
 	end
@@ -610,6 +630,7 @@ function VToolkit:CreateList(cols, multiselect, sortable, colrunner)
 	end
 	return lst
 end
+
 
 function VToolkit:CreatePropertySheet()
 	local sheet = vgui.Create("DPropertySheet")
@@ -638,7 +659,6 @@ function VToolkit:CreateCategoryList(onecategory)
 			end
 			btn.Header.DoClick = function(self)
 				for i,k in pairs(lst.pnlCanvas:GetChildren()) do
-					print(k, k:GetName())
 					if(k:GetExpanded()) then k:Toggle() end
 				end
 				btn:Toggle()

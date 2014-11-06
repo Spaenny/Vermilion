@@ -95,7 +95,7 @@ function MODULE:InitClient()
 		Conditional = function(vplayer)
 			return Vermilion:HasPermission("manage_donator_mode")
 		end,
-		Builder = function(panel)
+		Builder = function(panel, paneldata)
 			local urltb = nil
 			
 			local enabled = VToolkit:CreateCheckBox("Enable donator promotion mode")
@@ -109,7 +109,7 @@ function MODULE:InitClient()
 				net.WriteString(urltb:GetValue())
 				net.SendToServer()
 			end
-			panel.EnableDonatorMode = enabled
+			paneldata.EnableDonatorMode = enabled
 			
 			urltb = VToolkit:CreateTextbox("", panel)
 			urltb:SetPos(10, 200)
@@ -121,7 +121,7 @@ function MODULE:InitClient()
 				net.WriteString(urltb:GetValue())
 				net.SendToServer()
 			end
-			panel.DonatorURL = urltb
+			paneldata.DonatorURL = urltb
 			
 			local tblab = VToolkit:CreateLabel("")
 			tblab:SetPos(10, 50)

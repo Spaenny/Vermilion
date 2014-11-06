@@ -365,7 +365,9 @@ function Vermilion:AttachUserFunctions(usrObject)
 		
 		function meta:SetRank(rank)
 			if(Vermilion:HasRank(rank)) then
+				local old = self.Rank
 				self.Rank = rank
+				hook.Run(Vermilion.Event.PlayerChangeRank, self, old, rank)
 				local ply = self:GetEntity()
 				if(IsValid(ply)) then
 					--Vermilion:AddNotification(ply, Vermilion:TranslateStr("change_rank", { self.Rank }, ply))
@@ -574,6 +576,18 @@ function Vermilion:LoadConfiguration()
 				return
 			end
 			
+			if(table.Count(fls) > 100) then
+				local oneWeekAgo = os.time() - (60 * 60 * 24 * 7)
+				for i,k in pairs(fls) do
+					if(tonumber(string.Replace(k, ".txt", "")) < oneWeekAgo) then
+						Vermilion.Log("Deleting week-old configuration file; " .. k .. "!")
+						file.Delete("vermilion2/backup/" .. k)
+						table.RemoveByValue(fls, k)
+						if(table.Count(fls) <= 100) then break end
+					end
+				end
+			end
+			
 			
 			local max = 0
 			for i,k in pairs(fls) do
@@ -672,6 +686,13 @@ Vermilion:AddHook("PlayerInitialSpawn", "RegisterPlayer", true, function(vplayer
 	end)
 end)
 
+gameevent.Listen("player_disconnect")
+
+Vermilion:AddHook("player_disconnect", "DisconnectMessage", true, function(data)
+	if(not Vermilion:GetData("joinleave_enabled", true, true)) then return end
+	if(string.find(data.reason, "Kicked by")) then return end
+	Vermilion:BroadcastNotification(data.name .. " left the server: " .. data.reason)
+end)
 
 
 

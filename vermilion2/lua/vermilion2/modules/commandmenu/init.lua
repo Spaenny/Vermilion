@@ -44,14 +44,14 @@ function MODULE:InitClient()
 		Conditional = function(vplayer)
 			return Vermilion:HasPermission("view_command_menu")
 		end,
-		Builder = function(panel)
+		Builder = function(panel, paneldata)
 			local stage = vgui.Create("DPanel")
 			stage:SetDrawBackground(false)
 			stage:SetParent(panel)
 			stage:Dock(FILL)
 			
 			local lst = VToolkit:CreateCategoryList(true)
-			MODULE.List = lst
+			paneldata.List = lst
 			
 			local cats = {}
 			
@@ -90,7 +90,12 @@ function MODULE:InitClient()
 							playerlistd:SetDrawBackground(false)
 							playerlistd:DockPadding(5, 5, 5, 5)
 							
-							local playerlist = VToolkit:CreateList({ "Name", "Rank" }, true)
+							local playerlist = VToolkit:CreateList({
+								cols = {
+									"Name",
+									"Rank"
+								}
+							})
 							playerlist:Dock(FILL)
 							playerlist:SetParent(playerlistd)
 							playerlistrt = playerlist

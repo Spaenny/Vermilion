@@ -162,8 +162,8 @@ end
 
 function MODULE:InitClient()
 	self:NetHook("VGetEvents", function()
-		local panel = Vermilion.Menu.Pages["event_log"].Panel
-		panel.EventList:Clear()
+		local paneldata = Vermilion.Menu.Pages["event_log"]
+		paneldata.EventList:Clear()
 		local var = net.ReadTable()
 		for i,k in pairs(var) do
 			timer.Simple(i / 30, function()
@@ -171,27 +171,27 @@ function MODULE:InitClient()
 				img:SetImage(k.Icon)
 				img:SizeToContents()
 				
-				local ln = panel.EventList:AddLine(os.date("%d/%m/%y %H:%M:%S", k.Time), "", k.Text)
+				local ln = paneldata.EventList:AddLine(os.date("%d/%m/%y %H:%M:%S", k.Time), "", k.Text)
 				ln.Columns[2]:Add(img)
 			end)
 		end
 		timer.Simple(table.Count(var) / 30 + 1, function()
-			panel.EventList.VBar:AnimateTo(panel.EventList.VBar.CanvasSize + 100, 1, 0, -3)
+			paneldata.EventList.VBar:AnimateTo(paneldata.EventList.VBar.CanvasSize + 100, 1, 0, -3)
 		end)
 	end)
 	
 	self:NetHook("VSendEvent", function()
 		if(Vermilion.Menu.IsOpen) then
-			local panel = Vermilion.Menu.Pages["event_log"].Panel
+			local paneldata = Vermilion.Menu.Pages["event_log"]
 			local k = net.ReadTable()
 			local img = vgui.Create("DImage")
 			img:SetImage(k.Icon)
 			img:SizeToContents()
 			
-			local ln = panel.EventList:AddLine(os.date("%d/%m/%y %H:%M:%S", k.Time), "", k.Text)
+			local ln = paneldata.EventList:AddLine(os.date("%d/%m/%y %H:%M:%S", k.Time), "", k.Text)
 			ln.Columns[2]:Add(img)
 			
-			panel.EventList.VBar:AnimateTo(panel.EventList.VBar.CanvasSize + 100, 1, 0, -3)
+			paneldata.EventList.VBar:AnimateTo(paneldata.EventList.VBar.CanvasSize + 100, 1, 0, -3)
 		end
 	end)
 
@@ -206,11 +206,19 @@ function MODULE:InitClient()
 		Conditional = function(vplayer)
 			return Vermilion:HasPermission("see_event_log")
 		end,
-		Builder = function(panel)
-			local evtlist = VToolkit:CreateList({"Time", "", "Text"}, false, false)
+		Builder = function(panel, paneldata)
+			local evtlist = VToolkit:CreateList({
+				cols = {
+					"Time",
+					"",
+					"Text"
+				},
+				multiselect = false,
+				sortable = false
+			})
 			evtlist:Dock(FILL)
 			evtlist:SetParent(panel)
-			panel.EventList = evtlist
+			paneldata.EventList = evtlist
 			evtlist.Columns[1]:SetFixedWidth(100)
 			evtlist.Columns[2]:SetFixedWidth(16)
 		end,

@@ -111,11 +111,11 @@ end
 function MODULE:InitClient()
 
 	self:NetHook("VGetLoadout", function()
-		if(not IsValid(Vermilion.Menu.Pages["loadout"].Panel.RankList)) then return end
-		if(net.ReadString() != Vermilion.Menu.Pages["loadout"].Panel.RankList:GetSelected()[1]:GetValue(1)) then return end
+		if(not IsValid(Vermilion.Menu.Pages["loadout"].RankList)) then return end
+		if(net.ReadString() != Vermilion.Menu.Pages["loadout"].RankList:GetSelected()[1]:GetValue(1)) then return end
 		local data = net.ReadTable()
-		local loadout_list = Vermilion.Menu.Pages["loadout"].Panel.RankPermissions
-		local weps = Vermilion.Menu.Pages["loadout"].Panel.Weapons
+		local loadout_list = Vermilion.Menu.Pages["loadout"].RankPermissions
+		local weps = Vermilion.Menu.Pages["loadout"].Weapons
 		if(IsValid(loadout_list)) then
 			loadout_list:Clear()
 			for i,k in pairs(data) do
@@ -139,7 +139,7 @@ function MODULE:InitClient()
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_loadout")
 			end,
-			Builder = function(panel)
+			Builder = function(panel, paneldata)
 				local giveDefault = nil
 				local giveWeapon = nil
 				local takeWeapon = nil
@@ -163,21 +163,28 @@ function MODULE:InitClient()
 					["weapon_stunstick"] = "models/weapons/w_stunbaton.mdl",
 					["weapon_physgun"] = "models/weapons/w_Physics.mdl"
 				}
-				function panel.getMdl(class)
+				function paneldata.getMdl(class)
 					if(default[class] != nil) then return default[class] end
 					return weapons.Get(class).WorldModel
 				end
 				
-				panel.PreviewPanel = VToolkit:CreatePreviewPanel("model", panel, function(ent)
+				paneldata.PreviewPanel = VToolkit:CreatePreviewPanel("model", panel, function(ent)
 					ent:SetPos(Vector(20, 20, 45))
 				end)
 			
 				
-				rankList = VToolkit:CreateList({ "Name" }, false, false)
+				rankList = VToolkit:CreateList({
+					cols = {
+						"Name"
+					},
+					multiselect = false,
+					sortable = false,
+					centre = true
+				})
 				rankList:SetPos(10, 30)
 				rankList:SetSize(200, panel:GetTall() - 40)
 				rankList:SetParent(panel)
-				panel.RankList = rankList
+				paneldata.RankList = rankList
 				
 				local rankHeader = VToolkit:CreateHeaderLabel(rankList, "Ranks")
 				rankHeader:SetParent(panel)
@@ -191,11 +198,15 @@ function MODULE:InitClient()
 					net.SendToServer()
 				end
 				
-				rankPermissions = VToolkit:CreateList({ "Name" })
+				rankPermissions = VToolkit:CreateList({
+					cols = {
+						"Name"
+					}
+				})
 				rankPermissions:SetPos(220, 30)
 				rankPermissions:SetSize(240, panel:GetTall() - 40)
 				rankPermissions:SetParent(panel)
-				panel.RankPermissions = rankPermissions
+				paneldata.RankPermissions = rankPermissions
 				
 				local rankPermissionsHeader = VToolkit:CreateHeaderLabel(rankPermissions, "Rank Loadout")
 				rankPermissionsHeader:SetParent(panel)
@@ -207,11 +218,15 @@ function MODULE:InitClient()
 				VToolkit:CreateSearchBox(rankPermissions)
 				
 				
-				allPermissions = VToolkit:CreateList({"Name"})
+				allPermissions = VToolkit:CreateList({
+					cols = {
+						"Name"
+					}
+				})
 				allPermissions:SetPos(panel:GetWide() - 250, 30)
 				allPermissions:SetSize(240, panel:GetTall() - 40)
 				allPermissions:SetParent(panel)
-				panel.AllPermissions = allPermissions
+				paneldata.AllPermissions = allPermissions
 				
 				local allPermissionsHeader = VToolkit:CreateHeaderLabel(allPermissions, "All Weapons")
 				allPermissionsHeader:SetParent(panel)
@@ -284,62 +299,62 @@ function MODULE:InitClient()
 				takeWeapon:SetParent(panel)
 				takeWeapon:SetDisabled(true)
 				
-				panel.GiveDefault = giveDefault
-				panel.GiveWeapon = giveWeapon
-				panel.TakeWeapon = takeWeapon
+				paneldata.GiveDefault = giveDefault
+				paneldata.GiveWeapon = giveWeapon
+				paneldata.TakeWeapon = takeWeapon
 				
 				
 			end,
-			Updater = function(panel)
-				if(panel.Weapons == nil) then
-					panel.Weapons = {}
+			Updater = function(panel, paneldata)
+				if(paneldata.Weapons == nil) then
+					paneldata.Weapons = {}
 					for i,k in pairs(list.Get("Weapon")) do
 						local name = k.PrintName
 						if(name == nil or name == "") then
 							name = k.ClassName
 						end
-						table.insert(panel.Weapons, { Name = name, ClassName = k.ClassName })
+						table.insert(paneldata.Weapons, { Name = name, ClassName = k.ClassName })
 					end
 				end
-				if(table.Count(panel.AllPermissions:GetLines()) == 0) then
-					for i,k in pairs(panel.Weapons) do
-						local ln = panel.AllPermissions:AddLine(k.Name)
+				if(table.Count(paneldata.AllPermissions:GetLines()) == 0) then
+					for i,k in pairs(paneldata.Weapons) do
+						local ln = paneldata.AllPermissions:AddLine(k.Name)
 						ln.ClassName = k.ClassName
 						
-						ln.ModelPath = panel.getMdl(k.ClassName)
+						ln.ModelPath = paneldata.getMdl(k.ClassName)
 						
 						ln.OldCursorMoved = ln.OnCursorMoved
 						ln.OldCursorEntered = ln.OnCursorEntered
 						ln.OldCursorExited = ln.OnCursorExited
 						
 						function ln:OnCursorEntered()
-							panel.PreviewPanel:SetVisible(true)
-							panel.PreviewPanel.ModelView:SetModel(ln.ModelPath)
+							paneldata.PreviewPanel:SetVisible(true)
+							paneldata.PreviewPanel.ModelView:SetModel(ln.ModelPath)
 							
 							if(self.OldCursorEntered) then self:OldCursorEntered() end
 						end
 						
 						function ln:OnCursorExited()
-							panel.PreviewPanel:SetVisible(false)
+							paneldata.PreviewPanel:SetVisible(false)
 							
 							if(self.OldCursorExited) then self:OldCursorExited() end
 						end
 						
 						function ln:OnCursorMoved(x,y)
-							if(IsValid(panel.PreviewPanel)) then
+							if(IsValid(paneldata.PreviewPanel)) then
 								local x, y = input.GetCursorPos()
-								panel.PreviewPanel:SetPos(x - 180, y - 117)
+								paneldata.PreviewPanel:SetPos(x - 180, y - 117)
 							end
 							
 							if(self.OldCursorMoved) then self:OldCursorMoved(x,y) end
 						end
 					end
 				end
-				Vermilion:PopulateRankTable(panel.RankList, false, true)
-				panel.RankPermissions:Clear()
-				panel.GiveWeapon:SetDisabled(true)
-				panel.TakeWeapon:SetDisabled(true)
-				panel.GiveDefault:SetDisabled(true)
+				Vermilion:PopulateRankTable(paneldata.RankList, false, true)
+				paneldata.RankPermissions:Clear()
+				paneldata.GiveWeapon:SetDisabled(true)
+				paneldata.TakeWeapon:SetDisabled(true)
+				paneldata.GiveDefault:SetDisabled(true)
 			end
 		})
 	

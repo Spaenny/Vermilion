@@ -79,11 +79,11 @@ end
 function MODULE:InitClient()
 
 	self:NetHook("VGetToolgunLimits", function()
-		if(not IsValid(Vermilion.Menu.Pages["limit_toolgun"].Panel.RankList)) then return end
-		if(net.ReadString() != Vermilion.Menu.Pages["limit_toolgun"].Panel.RankList:GetSelected()[1]:GetValue(1)) then return end
+		if(not IsValid(Vermilion.Menu.Pages["limit_toolgun"].RankList)) then return end
+		if(net.ReadString() != Vermilion.Menu.Pages["limit_toolgun"].RankList:GetSelected()[1]:GetValue(1)) then return end
 		local data = net.ReadTable()
-		local blocklist = Vermilion.Menu.Pages["limit_toolgun"].Panel.RankBlockList
-		local tools = Vermilion.Menu.Pages["limit_toolgun"].Panel.Tools
+		local blocklist = Vermilion.Menu.Pages["limit_toolgun"].RankBlockList
+		local tools = Vermilion.Menu.Pages["limit_toolgun"].Tools
 		if(IsValid(blocklist)) then
 			blocklist:Clear()
 			for i,k in pairs(data) do
@@ -107,7 +107,7 @@ function MODULE:InitClient()
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_toolgun_limits")
 			end,
-			Builder = function(panel)
+			Builder = function(panel, paneldata)
 				local blockTool = nil
 				local unblockTool = nil
 				local rankList = nil
@@ -115,11 +115,18 @@ function MODULE:InitClient()
 				local rankBlockList = nil
 			
 				
-				rankList = VToolkit:CreateList({ "Name" }, false, false)
+				rankList = VToolkit:CreateList({
+					cols = {
+						"Name"
+					},
+					multiselect = false,
+					sortable = false,
+					centre = true
+				})
 				rankList:SetPos(10, 30)
 				rankList:SetSize(200, panel:GetTall() - 40)
 				rankList:SetParent(panel)
-				panel.RankList = rankList
+				paneldata.RankList = rankList
 				
 				local rankHeader = VToolkit:CreateHeaderLabel(rankList, "Ranks")
 				rankHeader:SetParent(panel)
@@ -132,11 +139,15 @@ function MODULE:InitClient()
 					net.SendToServer()
 				end
 				
-				rankBlockList = VToolkit:CreateList({ "Name" })
+				rankBlockList = VToolkit:CreateList({
+					cols = {
+						"Name"
+					}
+				})
 				rankBlockList:SetPos(220, 30)
 				rankBlockList:SetSize(240, panel:GetTall() - 40)
 				rankBlockList:SetParent(panel)
-				panel.RankBlockList = rankBlockList
+				paneldata.RankBlockList = rankBlockList
 				
 				local rankBlockListHeader = VToolkit:CreateHeaderLabel(rankBlockList, "Blocked Tools")
 				rankBlockListHeader:SetParent(panel)
@@ -148,11 +159,15 @@ function MODULE:InitClient()
 				VToolkit:CreateSearchBox(rankBlockList)
 				
 				
-				allTools = VToolkit:CreateList({"Name"})
+				allTools = VToolkit:CreateList({
+					cols = {
+						"Name"
+					}
+				})
 				allTools:SetPos(panel:GetWide() - 250, 30)
 				allTools:SetSize(240, panel:GetTall() - 40)
 				allTools:SetParent(panel)
-				panel.AllTools = allTools
+				paneldata.AllTools = allTools
 				
 				local allToolsHeader = VToolkit:CreateHeaderLabel(allTools, "All Tools")
 				allToolsHeader:SetParent(panel)
@@ -199,14 +214,14 @@ function MODULE:InitClient()
 				unblockTool:SetParent(panel)
 				unblockTool:SetDisabled(true)
 				
-				panel.BlockTool = blockTool
-				panel.UnblockTool = unblockTool
+				paneldata.BlockTool = blockTool
+				paneldata.UnblockTool = unblockTool
 				
 				
 			end,
-			Updater = function(panel)
-				if(panel.Tools == nil) then
-					panel.Tools = {}
+			Updater = function(panel, paneldata)
+				if(paneldata.Tools == nil) then
+					paneldata.Tools = {}
 					if(weapons.Get("gmod_tool") != nil) then
 						for i,k in pairs(weapons.Get("gmod_tool").Tool) do
 							local PrintName = k.Name
@@ -214,20 +229,20 @@ function MODULE:InitClient()
 							if(string.StartWith(PrintName, "#")) then
 								PrintName = language.GetPhrase(string.Replace(PrintName, "#", ""))
 							end
-							table.insert(panel.Tools, { Name = PrintName, ClassName = i })
+							table.insert(paneldata.Tools, { Name = PrintName, ClassName = i })
 						end
 					end
 				end
-				if(table.Count(panel.AllTools:GetLines()) == 0) then
-					for i,k in pairs(panel.Tools) do
-						local ln = panel.AllTools:AddLine(k.Name)
+				if(table.Count(paneldata.AllTools:GetLines()) == 0) then
+					for i,k in pairs(paneldata.Tools) do
+						local ln = paneldata.AllTools:AddLine(k.Name)
 						ln.ClassName = k.ClassName
 					end
 				end
-				Vermilion:PopulateRankTable(panel.RankList, false, true)
-				panel.RankBlockList:Clear()
-				panel.BlockTool:SetDisabled(true)
-				panel.UnblockTool:SetDisabled(true)
+				Vermilion:PopulateRankTable(paneldata.RankList, false, true)
+				paneldata.RankBlockList:Clear()
+				paneldata.BlockTool:SetDisabled(true)
+				paneldata.UnblockTool:SetDisabled(true)
 			end
 		})
 	

@@ -178,7 +178,14 @@ function MODULE:InitClient()
 				local rankRuleList = nil
 				
 				
-				rankList = VToolkit:CreateList({ "Name" }, false, false)
+				rankList = VToolkit:CreateList({
+					cols = {
+						"Name"
+					},
+					multiselect = false,
+					sortable = false,
+					centre = true
+				})
 				rankList:SetPos(10, 30)
 				rankList:SetSize(200, panel:GetTall() - 40)
 				rankList:SetParent(panel)
@@ -196,7 +203,12 @@ function MODULE:InitClient()
 					net.SendToServer()
 				end
 				
-				rankRuleList = VToolkit:CreateList({ "Name", "Value" })
+				rankRuleList = VToolkit:CreateList({
+					cols = {
+						"Name",
+						"Value"
+					}
+				})
 				rankRuleList:SetPos(220, 30)
 				rankRuleList:SetSize(240, panel:GetTall() - 40)
 				rankRuleList:SetParent(panel)
@@ -213,7 +225,13 @@ function MODULE:InitClient()
 				VToolkit:CreateSearchBox(rankRuleList)
 				
 				
-				allRules = VToolkit:CreateList({"Name", "Default"}, false)
+				allRules = VToolkit:CreateList({
+					cols = {
+						"Name",
+						"Default"
+					},
+					multiselect = false
+				})
 				allRules:SetPos(panel:GetWide() - 250, 30)
 				allRules:SetSize(240, panel:GetTall() - 40)
 				allRules:SetParent(panel)

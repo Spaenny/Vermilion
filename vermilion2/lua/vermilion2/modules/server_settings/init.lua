@@ -22,6 +22,7 @@ MODULE.Name = "Server Settings"
 MODULE.ID = "server_settings"
 MODULE.Description = "Provides a collection of basic options for administrating the server."
 MODULE.Author = "Ned"
+MODULE.PreventDisable = true
 MODULE.Permissions = {
 	"manage_server",
 	"no_fall_damage",
@@ -930,25 +931,26 @@ function MODULE:InitClient()
 	end)
 	
 	self:NetHook("VGetMOTDProperties", function()
-		local panel = Vermilion.Menu.Pages["motd"].Panel
+		local paneldata = Vermilion.Menu.Pages["motd"]
 		local text = net.ReadString()
 		local typ = net.ReadInt(32)
 		
-		panel.TypeCombo.Updating = true
-		panel.TypeCombo:ChooseOptionID(typ)
-		panel.TypeCombo.Updating = false
+		paneldata.TypeCombo.Updating = true
+		paneldata.TypeCombo:ChooseOptionID(typ)
+		paneldata.TypeCombo.Updating = false
 		
-		panel.MOTDText:SetValue(text)
-		panel.UnsavedChanges = false
+		paneldata.MOTDText:SetValue(text)
+		paneldata.UnsavedChanges = false
 	end)
 	
 	self:NetHook("VGetCommandMuting", function()
 		local data = net.ReadTable()
-		local panel = Vermilion.Menu.Pages["command_muting"].Panel
+		local paneldata = Vermilion.Menu.Pages["command_muting"]
+		local panel = paneldata.Panel
 		
-		if(table.Count(panel.Controls) > 0) then
+		if(table.Count(paneldata.Controls) > 0) then
 			for i,k in pairs(data) do
-				local control = panel.Controls[k.Name]
+				local control = paneldata.Controls[k.Name]
 				control.AllowUpdate = false
 				control:SetValue(k.Value)
 				control.AllowUpdate = true
@@ -962,9 +964,9 @@ function MODULE:InitClient()
 			cb:Dock(TOP)
 			cb:DockMargin(10, 0, 10, 10)
 			
-			cb:SetParent(panel.Scroll)
+			cb:SetParent(paneldata.Scroll)
 			cb:SetValue(k.Value)
-			panel.Controls[k.Name] = cb
+			paneldata.Controls[k.Name] = cb
 			cb.AllowUpdate = true
 			
 			function cb:OnChange()
@@ -1055,13 +1057,13 @@ function MODULE:InitClient()
 		Conditional = function(vplayer)
 			return Vermilion:HasPermission("manage_server")
 		end,
-		Builder = function(panel)
+		Builder = function(panel, paneldata)
 			MODULE.UpdatingGUI = true
-			MODULE.SettingsList = VToolkit:CreateCategoryList()
-			MODULE.SettingsList:SetParent(panel)
-			MODULE.SettingsList:SetPos(0, 0)
-			MODULE.SettingsList:SetSize(600, 560)
-			local sl = MODULE.SettingsList
+			paneldata.SettingsList = VToolkit:CreateCategoryList()
+			paneldata.SettingsList:SetParent(panel)
+			paneldata.SettingsList:SetPos(0, 0)
+			paneldata.SettingsList:SetSize(600, 560)
+			local sl = paneldata.SettingsList
 			
 			for i,k in SortedPairsByMemberValue(categories, "Order") do
 				k.Impl = sl:Add(k.Name)
@@ -1077,7 +1079,7 @@ function MODULE:InitClient()
 					label:SetParent(panel)
 					
 					local combobox = VToolkit:CreateComboBox()
-					combobox:SetPos(MODULE.SettingsList:GetWide() - 230, 3)
+					combobox:SetPos(paneldata.SettingsList:GetWide() - 230, 3)
 					combobox:Dock(RIGHT)
 					combobox:DockMargin(0, 2, 5, 2)
 					combobox:SetParent(panel)
@@ -1227,19 +1229,19 @@ function MODULE:InitClient()
 		Conditional = function(vplayer)
 			return Vermilion:HasPermission("change_motd")
 		end,
-		Builder = function(panel)
+		Builder = function(panel, paneldata)
 			local motdtext = VToolkit:CreateTextbox("", panel)
 			motdtext:SetMultiline(true)
 			motdtext:SetPos(10, 10)
 			motdtext:SetSize(480, 400)
 			motdtext:SetParent(panel)
 			motdtext:SetUpdateOnType(true)
-			panel.MOTDText = motdtext
+			paneldata.MOTDText = motdtext
 			
-			panel.UnsavedChanges = false
+			paneldata.UnsavedChanges = false
 			
 			function motdtext:OnChange()
-				panel.UnsavedChanges = true
+				paneldata.UnsavedChanges = true
 			end
 			
 			local typCombo = VToolkit:CreateComboBox({
@@ -1259,7 +1261,7 @@ function MODULE:InitClient()
 				net.WriteInt(index, 32)
 				net.SendToServer()
 			end
-			panel.TypeCombo = typCombo
+			paneldata.TypeCombo = typCombo
 			
 			local motdVars = VToolkit:CreateButton("Show Variables", function()
 				local motdpanel2 = VToolkit:CreateFrame(
@@ -1272,7 +1274,12 @@ function MODULE:InitClient()
 						['bgBlur'] = false
 					}
 				)
-				local varList = VToolkit:CreateList({"Name", "Description"})
+				local varList = VToolkit:CreateList({
+					cols = {
+						"Name",
+						"Description"
+					}
+				})
 				varList:SetPos(10, 30)
 				varList:SetSize(480, 260)
 				varList:SetParent(motdpanel2)
@@ -1300,17 +1307,17 @@ function MODULE:InitClient()
 				MODULE:NetStart("VUpdateMOTD")
 				net.WriteString(motdtext:GetValue())
 				net.SendToServer()
-				panel.UnsavedChanges = false
+				paneldata.UnsavedChanges = false
 			end)
 			save:SetPos(370, 475)
 			save:SetSize(120, 20)
 			save:SetParent(panel)
 			
 			MODULE:AddHook(Vermilion.Event.MENU_CLOSING, function()
-				if(panel.UnsavedChanges) then
+				if(paneldata.UnsavedChanges) then
 					VToolkit:CreateConfirmDialog("There are unsaved changes to the MOTD! Really close?", function()
 						Vermilion.Menu:Close(true)
-						panel.UnsavedChanges = false
+						paneldata.UnsavedChanges = false
 					end, { Confirm = "Yes", Deny = "No", Default = false })
 					return false
 				end
@@ -1367,7 +1374,7 @@ function MODULE:InitClient()
 		Conditional = function(vplayer)
 			return Vermilion:HasPermission("manage_server")
 		end,
-		Builder = function(panel)
+		Builder = function(panel, paneldata)
 			local label = VToolkit:CreateLabel("Control which commands can produce global output, i.e. \"Ned cleared the decals.\". If a command isn't on this list, it doesn't produce global output.")
 			label:SetParent(panel)
 			label:SetWrap(true)
@@ -1375,12 +1382,12 @@ function MODULE:InitClient()
 			label:Dock(TOP)
 			label:DockMargin(10, 10, 10, 20)
 			
-			panel.Controls = {}
+			paneldata.Controls = {}
 			
 			local scroll = vgui.Create("DScrollPanel")
 			scroll:Dock(FILL)
 			scroll:SetParent(panel)
-			panel.Scroll = scroll
+			paneldata.Scroll = scroll
 		end,
 		Updater = function(panel)
 			MODULE:NetCommand("VGetCommandMuting")

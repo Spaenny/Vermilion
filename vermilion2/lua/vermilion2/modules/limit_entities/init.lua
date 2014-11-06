@@ -86,11 +86,11 @@ end
 function MODULE:InitClient()
 
 	self:NetHook("VGetEntityLimits", function()
-		if(not IsValid(Vermilion.Menu.Pages["limit_entities"].Panel.RankList)) then return end
-		if(net.ReadString() != Vermilion.Menu.Pages["limit_entities"].Panel.RankList:GetSelected()[1]:GetValue(1)) then return end
+		if(not IsValid(Vermilion.Menu.Pages["limit_entities"].RankList)) then return end
+		if(net.ReadString() != Vermilion.Menu.Pages["limit_entities"].RankList:GetSelected()[1]:GetValue(1)) then return end
 		local data = net.ReadTable()
-		local blocklist = Vermilion.Menu.Pages["limit_entities"].Panel.RankBlockList
-		local ents = Vermilion.Menu.Pages["limit_entities"].Panel.Entities
+		local blocklist = Vermilion.Menu.Pages["limit_entities"].RankBlockList
+		local ents = Vermilion.Menu.Pages["limit_entities"].Entities
 		if(IsValid(blocklist)) then
 			blocklist:Clear()
 			for i,k in pairs(data) do
@@ -114,7 +114,7 @@ function MODULE:InitClient()
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_entity_limits")
 			end,
-			Builder = function(panel)
+			Builder = function(panel, paneldata)
 				local blockEntity = nil
 				local unblockEntity = nil
 				local rankList = nil
@@ -122,11 +122,18 @@ function MODULE:InitClient()
 				local rankBlockList = nil
 			
 				
-				rankList = VToolkit:CreateList({ "Name" }, false, false)
+				rankList = VToolkit:CreateList({
+					cols = {
+						"Name"
+					},
+					multiselect = false,
+					sortable = false,
+					centre = true
+				})
 				rankList:SetPos(10, 30)
 				rankList:SetSize(200, panel:GetTall() - 40)
 				rankList:SetParent(panel)
-				panel.RankList = rankList
+				paneldata.RankList = rankList
 				
 				local rankHeader = VToolkit:CreateHeaderLabel(rankList, "Ranks")
 				rankHeader:SetParent(panel)
@@ -139,11 +146,15 @@ function MODULE:InitClient()
 					net.SendToServer()
 				end
 				
-				rankBlockList = VToolkit:CreateList({ "Name" })
+				rankBlockList = VToolkit:CreateList({
+					cols = {
+						"Name"
+					}
+				})
 				rankBlockList:SetPos(220, 30)
 				rankBlockList:SetSize(240, panel:GetTall() - 40)
 				rankBlockList:SetParent(panel)
-				panel.RankBlockList = rankBlockList
+				paneldata.RankBlockList = rankBlockList
 				
 				local rankBlockListHeader = VToolkit:CreateHeaderLabel(rankBlockList, "Blocked Entities")
 				rankBlockListHeader:SetParent(panel)
@@ -155,11 +166,15 @@ function MODULE:InitClient()
 				VToolkit:CreateSearchBox(rankBlockList)
 				
 				
-				allEntites = VToolkit:CreateList({"Name"})
+				allEntites = VToolkit:CreateList({
+					cols = {
+						"Name"
+					}
+				})
 				allEntites:SetPos(panel:GetWide() - 250, 30)
 				allEntites:SetSize(240, panel:GetTall() - 40)
 				allEntites:SetParent(panel)
-				panel.AllEntities = allEntites
+				paneldata.AllEntities = allEntites
 				
 				local allEntitesHeader = VToolkit:CreateHeaderLabel(allEntites, "All Entites")
 				allEntitesHeader:SetParent(panel)
@@ -206,32 +221,32 @@ function MODULE:InitClient()
 				unblockEntity:SetParent(panel)
 				unblockEntity:SetDisabled(true)
 				
-				panel.BlockEntity = blockEntity
-				panel.UnblockEntity = unblockEntity
+				paneldata.BlockEntity = blockEntity
+				paneldata.UnblockEntity = unblockEntity
 				
 				
 			end,
-			Updater = function(panel)
-				if(panel.Entities == nil) then
-					panel.Entities = {}
+			Updater = function(panel, paneldata)
+				if(paneldata.Entities == nil) then
+					paneldata.Entities = {}
 					for i,k in pairs(list.Get("SpawnableEntities")) do
 						local printname = k.PrintName
 						if(printname == nil or printname == "") then
 							printname = k.ClassName
 						end
-						table.insert(panel.Entities, { Name = printname, ClassName = k.ClassName })
+						table.insert(paneldata.Entities, { Name = printname, ClassName = k.ClassName })
 					end
 				end
-				if(table.Count(panel.AllEntities:GetLines()) == 0) then
-					for i,k in pairs(panel.Entities) do
-						local ln = panel.AllEntities:AddLine(k.Name)
+				if(table.Count(paneldata.AllEntities:GetLines()) == 0) then
+					for i,k in pairs(paneldata.Entities) do
+						local ln = paneldata.AllEntities:AddLine(k.Name)
 						ln.ClassName = k.ClassName
 					end
 				end
-				Vermilion:PopulateRankTable(panel.RankList, false, true)
-				panel.RankBlockList:Clear()
-				panel.BlockEntity:SetDisabled(true)
-				panel.UnblockEntity:SetDisabled(true)
+				Vermilion:PopulateRankTable(paneldata.RankList, false, true)
+				paneldata.RankBlockList:Clear()
+				paneldata.BlockEntity:SetDisabled(true)
+				paneldata.UnblockEntity:SetDisabled(true)
 			end
 		})
 	

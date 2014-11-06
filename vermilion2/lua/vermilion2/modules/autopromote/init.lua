@@ -82,12 +82,12 @@ end
 
 function MODULE:InitClient()
 	self:NetHook("VGetAutoPromoteListing", function()
-		local panel = Vermilion.Menu.Pages["autopromote"].Panel
-		if(IsValid(panel)) then
-			panel.PromotionTable:Clear()
+		local paneldata = Vermilion.Menu.Pages["autopromote"]
+		if(IsValid(paneldata.Panel)) then
+			paneldata.PromotionTable:Clear()
 			local tab = net.ReadTable()
 			for i,k in pairs(tab) do
-				panel.PromotionTable:AddLine(k.Rank, k.ToRank, k.PlaytimeString).TotalTime = k.Playtime
+				paneldata.PromotionTable:AddLine(k.Rank, k.ToRank, k.PlaytimeString).TotalTime = k.Playtime
 			end
 		end
 	end)
@@ -103,13 +103,20 @@ function MODULE:InitClient()
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_autopromote")
 			end,
-			Builder = function(panel)
-				local listings = VToolkit:CreateList({"From Rank", "To Rank", "After Playing For"}, false)
+			Builder = function(panel, paneldata)
+				local listings = VToolkit:CreateList({
+					cols = {
+						"From Rank",
+						"To Rank",
+						"After Playing For"
+					},
+					multiselect = false
+				})
 				listings:SetPos(10, 30)
 				listings:SetSize(765, 320)
 				listings:SetParent(panel)
 				
-				panel.PromotionTable = listings
+				paneldata.PromotionTable = listings
 				
 				local listingsLabel = VToolkit:CreateHeaderLabel(listings, "Auto-Promotion Listings")
 				listingsLabel:SetParent(panel)
@@ -133,7 +140,7 @@ function MODULE:InitClient()
 					for i,k in pairs(tab) do
 						listings:AddLine(k[1], k[2], k[3]).TotalTime = k[4]
 					end
-					panel.UnsavedChanges = true
+					paneldata.UnsavedChanges = true
 				end)
 				removeListing:SetPos(670, 360)
 				removeListing:SetSize(105, 30)
@@ -147,7 +154,7 @@ function MODULE:InitClient()
 					MODULE:NetStart("VSetAutoPromoteListing")
 					net.WriteTable(tab)
 					net.SendToServer()
-					panel.UnsavedChanges = false
+					paneldata.UnsavedChanges = false
 				end)
 				saveListings:SetPos(555, 360)
 				saveListings:SetSize(105, 30)
@@ -166,7 +173,7 @@ function MODULE:InitClient()
 				fromRankCombo.OnSelect = function(panel, index, value)
 					fromRankCombo.SelectedValue = value
 				end
-				panel.FromRankCombo = fromRankCombo
+				paneldata.FromRankCombo = fromRankCombo
 				
 				local toRankLabel = VToolkit:CreateLabel("To Rank: ")
 				toRankLabel:SetPos(10, 432)
@@ -181,7 +188,7 @@ function MODULE:InitClient()
 				toRankCombo.OnSelect = function(panel, index, value)
 					toRankCombo.SelectedValue = value
 				end
-				panel.ToRankCombo = toRankCombo
+				paneldata.ToRankCombo = toRankCombo
 				
 				local timeLabel = VToolkit:CreateLabel("After Playing For (running total since first ever spawn, not since last promotion):")
 				timeLabel:SetPos(10, 460)
@@ -271,7 +278,7 @@ function MODULE:InitClient()
 					end
 					
 					listings:AddLine(fromRankCombo.SelectedValue, toRankCombo.SelectedValue, tostring(daysWang:GetValue()) .. "d " .. tostring(hoursWang:GetValue()) .. "h " .. tostring(minsWang:GetValue()) .. "m " .. tostring(secondsWang:GetValue()) .. "s").TotalTime = time
-					panel.UnsavedChanges = true
+					paneldata.UnsavedChanges = true
 				end)
 				addListingButton:SetPos(306, 485)
 				addListingButton:SetSize(105, 30)
@@ -282,23 +289,23 @@ function MODULE:InitClient()
 				lab:SetParent(panel)
 				
 				MODULE:AddHook(Vermilion.Event.MENU_CLOSING, function()
-					if(panel.UnsavedChanges) then
+					if(paneldata.UnsavedChanges) then
 						VToolkit:CreateConfirmDialog("There are unsaved changes in the Auto-Promote settings! Really close?", function()
 							Vermilion.Menu:Close(true)
-							panel.UnsavedChanges = false
+							paneldata.UnsavedChanges = false
 						end, { Confirm = "Yes", Deny = "No", Default = false })
 						return false
 					end
 				end)
 			
 			end,
-			Updater = function(panel)
+			Updater = function(panel, paneldata)
 				MODULE:NetCommand("VGetAutoPromoteListing")
-				panel.FromRankCombo:Clear()
-				panel.ToRankCombo:Clear()
+				paneldata.FromRankCombo:Clear()
+				paneldata.ToRankCombo:Clear()
 				for i,k in pairs(Vermilion.Data.RankOverview) do
-					if(k.Name != "owner") then panel.FromRankCombo:AddChoice(k.Name) end
-					panel.ToRankCombo:AddChoice(k.Name)
+					if(k.Name != "owner") then paneldata.FromRankCombo:AddChoice(k.Name) end
+					paneldata.ToRankCombo:AddChoice(k.Name)
 				end
 			end
 		})

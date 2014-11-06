@@ -400,8 +400,8 @@ end
 function MODULE:InitClient()
 
 	self:NetHook("VGetMapList", function()
-		local panel = Vermilion.Menu.Pages["map"].Panel
-		local map_list = panel.MapList
+		local paneldata = Vermilion.Menu.Pages["map"]
+		local map_list = paneldata.MapList
 		if(IsValid(map_list)) then
 			local maps = net.ReadTable()
 			local counter = 1
@@ -415,60 +415,30 @@ function MODULE:InitClient()
 				ln.OldCursorExited = ln.OnCursorExited
 				
 				function ln:OnCursorEntered()
-					panel.PreviewPanel:SetVisible(true)
-					panel.PreviewPanel.HtmlView:OpenURL("asset://mapimage/" .. self:GetValue(1))
+					paneldata.PreviewPanel:SetVisible(true)
+					paneldata.PreviewPanel.HtmlView:OpenURL("asset://mapimage/" .. self:GetValue(1))
 					
 					if(self.OldCursorEntered) then self:OldCursorEntered() end
 				end
 				
 				function ln:OnCursorExited()
-					panel.PreviewPanel:SetVisible(false)
+					paneldata.PreviewPanel:SetVisible(false)
 					
 					if(self.OldCursorExited) then self:OldCursorExited() end
 				end
 				
 				function ln:OnCursorMoved(x,y)
-					if(IsValid(panel.PreviewPanel)) then
+					if(IsValid(paneldata.PreviewPanel)) then
 						local x, y = input.GetCursorPos()
-						panel.PreviewPanel:SetPos(x - 275, y - 202)
+						paneldata.PreviewPanel:SetPos(x - 275, y - 202)
 					end
 					
 					if(self.OldCursorMoved) then self:OldCursorMoved(x,y) end
 				end
 				
 				counter = counter + 1
-				panel.LoadProgress:SetFraction(counter / table.Count(maps))
+				paneldata.LoadProgress:SetFraction(counter / table.Count(maps))
 			end)
-			if(true) then return end
-			for i,k in pairs(maps) do
-				local ln = map_list:AddLine(k[1], k[2])
-				
-				ln.OldCursorMoved = ln.OnCursorMoved
-				ln.OldCursorEntered = ln.OnCursorEntered
-				ln.OldCursorExited = ln.OnCursorExited
-				
-				function ln:OnCursorEntered()
-					panel.PreviewPanel:SetVisible(true)
-					panel.PreviewPanel.HtmlView:OpenURL("asset://mapimage/" .. self:GetValue(1))
-					
-					if(self.OldCursorEntered) then self:OldCursorEntered() end
-				end
-				
-				function ln:OnCursorExited()
-					panel.PreviewPanel:SetVisible(false)
-					
-					if(self.OldCursorExited) then self:OldCursorExited() end
-				end
-				
-				function ln:OnCursorMoved(x,y)
-					if(IsValid(panel.PreviewPanel)) then
-						local x, y = input.GetCursorPos()
-						panel.PreviewPanel:SetPos(x - 275, y - 202)
-					end
-					
-					if(self.OldCursorMoved) then self:OldCursorMoved(x,y) end
-				end
-			end
 		end
 	end)
 	
@@ -582,14 +552,20 @@ function MODULE:InitClient()
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_map")
 			end,
-			Builder = function(panel)
-				panel.PreviewPanel = VToolkit:CreatePreviewPanel("html", panel)
+			Builder = function(panel, paneldata)
+				paneldata.PreviewPanel = VToolkit:CreatePreviewPanel("html", panel)
 			
-				local mapList = VToolkit:CreateList({ "Name", "Game" }, false)
+				local mapList = VToolkit:CreateList({
+					cols = {
+						"Name",
+						"Game"
+					},
+					multiselect = false
+				})
 				mapList:SetParent(panel)
 				mapList:SetPos(10, 30)
 				mapList:SetSize(450, 520)
-				panel.MapList = mapList
+				paneldata.MapList = mapList
 				
 				local mapHeader = VToolkit:CreateHeaderLabel(mapList, "Maps")
 				mapHeader:SetParent(panel)
@@ -686,7 +662,7 @@ function MODULE:InitClient()
 				loadProgress:SetSize(300, 20)
 				loadProgress:SetFraction(0)
 				loadProgress:SetParent(panel)
-				panel.LoadProgress = loadProgress
+				paneldata.LoadProgress = loadProgress
 				
 				local loadHeader = VToolkit:CreateHeaderLabel(loadProgress, "Maps Loaded:")
 				loadHeader:SetParent(panel)
@@ -702,15 +678,15 @@ function MODULE:InitClient()
 				reload:SetSize(100, 25)
 				reload:SetParent(panel)
 			end,
-			Updater = function(panel)
-				if(table.Count(panel.MapList:GetLines()) == 0) then
+			Updater = function(panel, paneldata)
+				if(table.Count(paneldata.MapList:GetLines()) == 0) then
 					MODULE:NetStart("VGetMapList")
 					net.SendToServer()
 				end
-				panel.MapList:SetVisible(true)
+				paneldata.MapList:SetVisible(true)
 			end,
-			Destroyer = function(panel)
-				panel.MapList:SetVisible(false)
+			Destroyer = function(panel, paneldata)
+				paneldata.MapList:SetVisible(false)
 			end
 		})
 end

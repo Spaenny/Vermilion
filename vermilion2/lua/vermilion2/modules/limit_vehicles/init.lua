@@ -89,11 +89,11 @@ end
 function MODULE:InitClient()
 
 	self:NetHook("VGetVehicleLimits", function()
-		if(not IsValid(Vermilion.Menu.Pages["limit_vehicle"].Panel.RankList)) then return end
-		if(net.ReadString() != Vermilion.Menu.Pages["limit_vehicle"].Panel.RankList:GetSelected()[1]:GetValue(1)) then return end
+		if(not IsValid(Vermilion.Menu.Pages["limit_vehicle"].RankList)) then return end
+		if(net.ReadString() != Vermilion.Menu.Pages["limit_vehicle"].RankList:GetSelected()[1]:GetValue(1)) then return end
 		local data = net.ReadTable()
-		local blocklist = Vermilion.Menu.Pages["limit_vehicle"].Panel.RankBlockList
-		local vehicles = Vermilion.Menu.Pages["limit_vehicle"].Panel.Vehicles
+		local blocklist = Vermilion.Menu.Pages["limit_vehicle"].RankBlockList
+		local vehicles = Vermilion.Menu.Pages["limit_vehicle"].Vehicles
 		if(IsValid(blocklist)) then
 			blocklist:Clear()
 			for i,k in pairs(data) do
@@ -117,24 +117,31 @@ function MODULE:InitClient()
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_vehicle_limits")
 			end,
-			Builder = function(panel)
+			Builder = function(panel, paneldata)
 				local blockVehicle = nil
 				local unblockVehicle = nil
 				local rankList = nil
 				local allVehicles = nil
 				local rankBlockList = nil
 				
-				panel.PreviewPanel = VToolkit:CreatePreviewPanel("model", panel, function(ent)
-					if(panel.PreviewPanel.EntityClass != "prop_vehicle_prisoner_pod") then
+				paneldata.PreviewPanel = VToolkit:CreatePreviewPanel("model", panel, function(ent)
+					if(paneldata.PreviewPanel.EntityClass != "prop_vehicle_prisoner_pod") then
 						ent:SetPos(Vector(-120, -120, 0))
 					end
 				end)
 				
-				rankList = VToolkit:CreateList({ "Name" }, false, false)
+				rankList = VToolkit:CreateList({
+					cols = {
+						"Name"
+					},
+					multiselect = false,
+					sortable = false,
+					centre = true
+				})
 				rankList:SetPos(10, 30)
 				rankList:SetSize(200, panel:GetTall() - 40)
 				rankList:SetParent(panel)
-				panel.RankList = rankList
+				paneldata.RankList = rankList
 				
 				local rankHeader = VToolkit:CreateHeaderLabel(rankList, "Ranks")
 				rankHeader:SetParent(panel)
@@ -147,11 +154,15 @@ function MODULE:InitClient()
 					net.SendToServer()
 				end
 				
-				rankBlockList = VToolkit:CreateList({ "Name" })
+				rankBlockList = VToolkit:CreateList({
+					cols = {
+						"Name"
+					}
+				})
 				rankBlockList:SetPos(220, 30)
 				rankBlockList:SetSize(240, panel:GetTall() - 40)
 				rankBlockList:SetParent(panel)
-				panel.RankBlockList = rankBlockList
+				paneldata.RankBlockList = rankBlockList
 				
 				local rankBlockListHeader = VToolkit:CreateHeaderLabel(rankBlockList, "Blocked Vehicles")
 				rankBlockListHeader:SetParent(panel)
@@ -163,11 +174,15 @@ function MODULE:InitClient()
 				VToolkit:CreateSearchBox(rankBlockList)
 				
 				
-				allVehicles = VToolkit:CreateList({"Name"})
+				allVehicles = VToolkit:CreateList({
+					cols = {
+						"Name"
+					}
+				})
 				allVehicles:SetPos(panel:GetWide() - 250, 30)
 				allVehicles:SetSize(240, panel:GetTall() - 40)
 				allVehicles:SetParent(panel)
-				panel.AllVehicles = allVehicles
+				paneldata.AllVehicles = allVehicles
 				
 				local allVehiclesHeader = VToolkit:CreateHeaderLabel(allVehicles, "All Vehicles")
 				allVehiclesHeader:SetParent(panel)
@@ -214,25 +229,25 @@ function MODULE:InitClient()
 				unblockVehicle:SetParent(panel)
 				unblockVehicle:SetDisabled(true)
 				
-				panel.BlockVehicle = blockVehicle
-				panel.UnblockVehicle = unblockVehicle
+				paneldata.BlockVehicle = blockVehicle
+				paneldata.UnblockVehicle = unblockVehicle
 				
 				
 			end,
-			Updater = function(panel)
-				if(panel.Vehicles == nil) then
-					panel.Vehicles = {}
+			Updater = function(panel, paneldata)
+				if(paneldata.Vehicles == nil) then
+					paneldata.Vehicles = {}
 					for i,k in pairs(list.Get("Vehicles")) do
 						local name = k.Name
 						if(name == nil or name == "") then
 							name = k.Class
 						end
-						table.insert(panel.Vehicles, { Name = name, ClassName = k.Model, StdClass = k.Class })
+						table.insert(paneldata.Vehicles, { Name = name, ClassName = k.Model, StdClass = k.Class })
 					end
 				end
-				if(table.Count(panel.AllVehicles:GetLines()) == 0) then
-					for i,k in pairs(panel.Vehicles) do
-						local ln = panel.AllVehicles:AddLine(k.Name)
+				if(table.Count(paneldata.AllVehicles:GetLines()) == 0) then
+					for i,k in pairs(paneldata.Vehicles) do
+						local ln = paneldata.AllVehicles:AddLine(k.Name)
 						ln.ClassName = k.ClassName
 						
 						ln.ModelPath = k.ClassName
@@ -242,34 +257,34 @@ function MODULE:InitClient()
 						ln.OldCursorExited = ln.OnCursorExited
 						
 						function ln:OnCursorEntered()
-							panel.PreviewPanel:SetVisible(true)
-							panel.PreviewPanel.ModelView:SetModel(ln.ModelPath)
-							panel.PreviewPanel.EntityClass = k.StdClass
+							paneldata.PreviewPanel:SetVisible(true)
+							paneldata.PreviewPanel.ModelView:SetModel(ln.ModelPath)
+							paneldata.PreviewPanel.EntityClass = k.StdClass
 							
 							
 							if(self.OldCursorEntered) then self:OldCursorEntered() end
 						end
 						
 						function ln:OnCursorExited()
-							panel.PreviewPanel:SetVisible(false)
+							paneldata.PreviewPanel:SetVisible(false)
 							
 							if(self.OldCursorExited) then self:OldCursorExited() end
 						end
 						
 						function ln:OnCursorMoved(x,y)
-							if(IsValid(panel.PreviewPanel)) then
+							if(IsValid(paneldata.PreviewPanel)) then
 								local x, y = input.GetCursorPos()
-								panel.PreviewPanel:SetPos(x - 180, y - 117)
+								paneldata.PreviewPanel:SetPos(x - 180, y - 117)
 							end
 							
 							if(self.OldCursorMoved) then self:OldCursorMoved(x,y) end
 						end
 					end
 				end
-				Vermilion:PopulateRankTable(panel.RankList, false, true)
-				panel.RankBlockList:Clear()
-				panel.BlockVehicle:SetDisabled(true)
-				panel.UnblockVehicle:SetDisabled(true)
+				Vermilion:PopulateRankTable(paneldata.RankList, false, true)
+				paneldata.RankBlockList:Clear()
+				paneldata.BlockVehicle:SetDisabled(true)
+				paneldata.UnblockVehicle:SetDisabled(true)
 			end
 		})
 	

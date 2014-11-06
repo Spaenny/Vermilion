@@ -22,6 +22,7 @@ MODULE.Name = "Client Settings"
 MODULE.ID = "client_settings"
 MODULE.Description = "Allows the player to modify the operation of the Vermilion Client."
 MODULE.Author = "Ned"
+MODULE.PreventDisable = true
 MODULE.Permissions = {
 
 }
@@ -55,13 +56,12 @@ function MODULE:InitClient()
 		Conditional = function(vplayer)
 			return true
 		end,
-		Builder = function(panel)
-			MODULE.UpdatingGUI = true
-			MODULE.SettingsList = VToolkit:CreateCategoryList()
-			MODULE.SettingsList:SetParent(panel)
-			MODULE.SettingsList:SetPos(0, 0)
-			MODULE.SettingsList:SetSize(600, 560)
-			local sl = MODULE.SettingsList
+		Builder = function(panel, paneldata)
+			paneldata.UpdatingGUI = true
+			local sl = VToolkit:CreateCategoryList()
+			sl:SetParent(panel)
+			sl:SetPos(0, 0)
+			sl:SetSize(600, 560)
 			
 			for i,k in SortedPairsByMemberValue(categories, "Order") do
 				k.Impl = sl:Add(k.Name)
@@ -77,7 +77,7 @@ function MODULE:InitClient()
 					label:SetParent(panel)
 					
 					local combobox = VToolkit:CreateComboBox()
-					combobox:SetPos(MODULE.SettingsList:GetWide() - 230, 3)
+					combobox:SetPos(sl:GetWide() - 230, 3)
 					combobox:SetParent(panel)
 					for i1,k1 in pairs(k.Options) do
 						combobox:AddChoice(k1)
@@ -94,7 +94,7 @@ function MODULE:InitClient()
 					end
 					
 					function combobox:OnSelect(index)
-						if(MODULE.UpdatingGUI) then return end
+						if(paneldata.UpdatingGUI) then return end
 						if(k.SetAs == "text") then
 							RunConsoleCommand(k.ConVar, self:GetOptionText(index))
 						else
@@ -168,7 +168,7 @@ function MODULE:InitClient()
 					slider:SetValue(k.Default)
 					
 					function slider:OnChange(index)
-						if(MODULE.UpdatingGUI) then return end
+						if(paneldata.UpdatingGUI) then return end
 						net.Start("VServerUpdate")
 						net.WriteTable({{ Module = k.Module, Name = k.Name, Value = index}})
 						net.SendToServer()
@@ -200,10 +200,10 @@ function MODULE:InitClient()
 					-- Implement Me!
 				end
 			end
-			MODULE.UpdatingGUI = false
+			paneldata.UpdatingGUI = false
 		end,
-		Updater = function(panel)
-			MODULE.UpdatingGUI = true
+		Updater = function(panel, paneldata)
+			paneldata.UpdatingGUI = true
 			for i,k in pairs(options) do
 				if(k.Type == "Combobox") then
 					if(tonumber(GetConVarString(k.ConVar)) != nil) then
@@ -215,7 +215,7 @@ function MODULE:InitClient()
 					k.Impl:SetChecked(GetConVarNumber(k.ConVar))
 				end
 			end
-			MODULE.UpdatingGUI = false
+			paneldata.UpdatingGUI = false
 		end
 	})
 end

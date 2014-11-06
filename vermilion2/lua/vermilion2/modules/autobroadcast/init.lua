@@ -86,11 +86,11 @@ end
 function MODULE:InitClient()
 
 	self:NetHook("VGetAutoBroadcastListing", function()
-		local panel = Vermilion.Menu.Pages["autobroadcast"].Panel
-		if(IsValid(panel)) then
-			panel.MessageTable:Clear()
+		local paneldata = Vermilion.Menu.Pages["autobroadcast"]
+		if(IsValid(paneldata.Panel)) then
+			paneldata.MessageTable:Clear()
 			for i,k in pairs(net.ReadTable()) do
-				panel.MessageTable:AddLine(k.Text, k.IntervalString).TotalTime = k.Interval
+				paneldata.MessageTable:AddLine(k.Text, k.IntervalString).TotalTime = k.Interval
 			end
 		end
 	end)
@@ -106,15 +106,18 @@ function MODULE:InitClient()
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_auto_broadcast")
 			end,
-			Builder = function(panel)
-				local listings = VToolkit:CreateList(MODULE:TranslateTable({ "list:text", "list:interval" }), false)
+			Builder = function(panel, paneldata)
+				local listings = VToolkit:CreateList({
+					cols = MODULE:TranslateTable({ "list:text", "list:interval" }),
+					multiselect = false
+				})
 				listings:SetPos(10, 30)
 				listings:SetSize(765, 460)
 				listings:SetParent(panel)
 				
 				listings.Columns[2]:SetFixedWidth(100)
 				
-				panel.MessageTable = listings
+				paneldata.MessageTable = listings
 				
 				local listingsLabel = VToolkit:CreateHeaderLabel(listings, MODULE:TranslateStr("list:title"))
 				listingsLabel:SetParent(panel)
@@ -160,7 +163,7 @@ function MODULE:InitClient()
 				addMessagePanel:SetWide((panel:GetWide() / 2) + 55)
 				addMessagePanel:SetPos(panel:GetWide(), 0)
 				addMessagePanel:SetParent(panel)
-				panel.AddMessagePanel = addMessagePanel
+				paneldata.AddMessagePanel = addMessagePanel
 				local cAMPanel = VToolkit:CreateButton(MODULE:TranslateStr("close"), function()
 					addMessagePanel:MoveTo(panel:GetWide(), 0, 0.25, 0, -3)
 				end)
@@ -279,9 +282,9 @@ function MODULE:InitClient()
 				addListingButton:SetSize(105, 30)
 				addListingButton:SetParent(addMessagePanel)
 			end,
-			Updater = function(panel)
+			Updater = function(panel, paneldata)
 				MODULE:NetCommand("VGetAutoBroadcastListing")
-				panel.AddMessagePanel:MoveTo(panel:GetWide(), 0, 0.25, 0, -3)
+				paneldata.AddMessagePanel:MoveTo(panel:GetWide(), 0, 0.25, 0, -3)
 			end
 		})
 end

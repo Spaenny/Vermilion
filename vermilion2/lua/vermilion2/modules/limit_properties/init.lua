@@ -163,11 +163,11 @@ function MODULE:InitClient()
 	end
 
 	self:NetHook("VGetPropertyLimits", function()
-		if(not IsValid(Vermilion.Menu.Pages["limit_properties"].Panel.RankList)) then return end
-		if(net.ReadString() != Vermilion.Menu.Pages["limit_properties"].Panel.RankList:GetSelected()[1]:GetValue(1)) then return end
+		if(not IsValid(Vermilion.Menu.Pages["limit_properties"].RankList)) then return end
+		if(net.ReadString() != Vermilion.Menu.Pages["limit_properties"].RankList:GetSelected()[1]:GetValue(1)) then return end
 		local data = net.ReadTable()
-		local blocklist = Vermilion.Menu.Pages["limit_properties"].Panel.RankBlockList
-		local props = Vermilion.Menu.Pages["limit_properties"].Panel.Properties
+		local blocklist = Vermilion.Menu.Pages["limit_properties"].RankBlockList
+		local props = Vermilion.Menu.Pages["limit_properties"].Properties
 		if(IsValid(blocklist)) then
 			blocklist:Clear()
 			for i,k in pairs(data) do
@@ -191,7 +191,7 @@ function MODULE:InitClient()
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_property_limits")
 			end,
-			Builder = function(panel)
+			Builder = function(panel, paneldata)
 				local blockProperty = nil
 				local unblockProperty = nil
 				local rankList = nil
@@ -199,11 +199,18 @@ function MODULE:InitClient()
 				local rankBlockList = nil
 			
 				
-				rankList = VToolkit:CreateList({ "Name" }, false, false)
+				rankList = VToolkit:CreateList({
+					cols = {
+						"Name"
+					},
+					multiselect = false,
+					sortable = false,
+					centre = true
+				})
 				rankList:SetPos(10, 30)
 				rankList:SetSize(200, panel:GetTall() - 40)
 				rankList:SetParent(panel)
-				panel.RankList = rankList
+				paneldata.RankList = rankList
 				
 				local rankHeader = VToolkit:CreateHeaderLabel(rankList, "Ranks")
 				rankHeader:SetParent(panel)
@@ -216,11 +223,15 @@ function MODULE:InitClient()
 					net.SendToServer()
 				end
 				
-				rankBlockList = VToolkit:CreateList({ "Name" })
+				rankBlockList = VToolkit:CreateList({
+					cols = {
+						"Name"
+					}
+				})
 				rankBlockList:SetPos(220, 30)
 				rankBlockList:SetSize(240, panel:GetTall() - 40)
 				rankBlockList:SetParent(panel)
-				panel.RankBlockList = rankBlockList
+				paneldata.RankBlockList = rankBlockList
 				
 				local rankBlockListHeader = VToolkit:CreateHeaderLabel(rankBlockList, "Blocked Properties")
 				rankBlockListHeader:SetParent(panel)
@@ -232,11 +243,15 @@ function MODULE:InitClient()
 				VToolkit:CreateSearchBox(rankBlockList)
 				
 				
-				allProperties = VToolkit:CreateList({"Name"})
+				allProperties = VToolkit:CreateList({
+					cols = {
+						"Name"
+					}
+				})
 				allProperties:SetPos(panel:GetWide() - 250, 30)
 				allProperties:SetSize(240, panel:GetTall() - 40)
 				allProperties:SetParent(panel)
-				panel.AllProperties = allProperties
+				paneldata.AllProperties = allProperties
 				
 				local allPropertiesHeader = VToolkit:CreateHeaderLabel(allProperties, "All Properties")
 				allPropertiesHeader:SetParent(panel)
@@ -283,33 +298,33 @@ function MODULE:InitClient()
 				unblockProperty:SetParent(panel)
 				unblockProperty:SetDisabled(true)
 				
-				panel.BlockProperty = blockProperty
-				panel.UnblockProperty = unblockProperty
+				paneldata.BlockProperty = blockProperty
+				paneldata.UnblockProperty = unblockProperty
 				
 				
 			end,
-			Updater = function(panel)
-				if(panel.Properties == nil) then
-					panel.Properties = {}
+			Updater = function(panel, paneldata)
+				if(paneldata.Properties == nil) then
+					paneldata.Properties = {}
 					for i,k in pairs(properties.List) do
 						local printname = k.MenuLabel
 						if(string.StartWith(printname, "#")) then
 							printname = language.GetPhrase(string.Replace(printname, "#", ""))
 						end
-						table.insert(panel.Properties, { Name = printname, ClassName = k.InternalName })
+						table.insert(paneldata.Properties, { Name = printname, ClassName = k.InternalName })
 					end
 				end
-				if(table.Count(panel.AllProperties:GetLines()) == 0) then
-					for i,k in pairs(panel.Properties) do
-						local ln = panel.AllProperties:AddLine(k.Name)
+				if(table.Count(paneldata.AllProperties:GetLines()) == 0) then
+					for i,k in pairs(paneldata.Properties) do
+						local ln = paneldata.AllProperties:AddLine(k.Name)
 						ln.ClassName = k.ClassName
 						
 					end
 				end
-				Vermilion:PopulateRankTable(panel.RankList, false, true)
-				panel.RankBlockList:Clear()
-				panel.BlockProperty:SetDisabled(true)
-				panel.UnblockProperty:SetDisabled(true)
+				Vermilion:PopulateRankTable(paneldata.RankList, false, true)
+				paneldata.RankBlockList:Clear()
+				paneldata.BlockProperty:SetDisabled(true)
+				paneldata.UnblockProperty:SetDisabled(true)
 			end
 		})
 	

@@ -22,9 +22,11 @@ MODULE.Name = "Rank Editor"
 MODULE.ID = "rank_editor"
 MODULE.Description = "Edits ranks"
 MODULE.Author = "Ned"
+MODULE.PreventDisable = true
 MODULE.Permissions = {
 	"manage_ranks",
-	"identify_as_admin"
+	"identify_as_admin",
+	"identify_as_superadmin"
 }
 MODULE.NetworkStrings = {
 	"VGetPermissions",
@@ -139,6 +141,27 @@ function MODULE:InitShared()
 			return Vermilion:HasPermission("identify_as_admin")
 		end
 		return Vermilion:HasPermission(self, "identify_as_admin")
+	end
+	
+	function meta:IsSuperAdmin()
+		if(CLIENT) then
+			if(self != LocalPlayer()) then return false end
+			return Vermilion:HasPermission("identify_as_superadmin")
+		end
+		return Vermilion:HasPermission(self, "identify_as_superadmin")
+	end
+	
+	meta.oldGetUserGroup = meta.GetUserGroup
+	function meta:GetUserGroup()
+		if(CLIENT) then
+			if(self:IsAdmin()) then return "admin" end
+			if(self:IsSuperAdmin()) then return "superadmin" end
+			if(Vermilion.Data.Rank == nil) then return self:oldGetUserGroup() end
+			return Vermilion.Data.Rank.Name
+		end
+		if(self:IsAdmin()) then return "admin" end
+		if(self:IsSuperAdmin()) then return "superadmin" end
+		return Vermilion:GetUser(self):GetRankName()
 	end
 	
 end
@@ -266,10 +289,10 @@ end
 function MODULE:InitClient()
 	self:NetHook("VGetPermissions", function()
 		local rank = net.ReadString()
-		if(not IsValid(MODULE.PermissionEditorPanel)) then return end
-		if(rank == MODULE.PermissionEditorPanel.RankList:GetSelected()[1]:GetValue(1)) then
+		local paneldata = Vermilion.Menu.Pages["permission_editor"]
+		if(rank == paneldata.RankList:GetSelected()[1]:GetValue(1)) then
 			local permissions = net.ReadTable()
-			local rnkPList = MODULE.PermissionEditorPanel.RankPermissions
+			local rnkPList = paneldata.RankPermissions
 			rnkPList:Clear()
 			for i,k in pairs(permissions) do
 				rnkPList:AddLine(k, Vermilion:LookupPermissionOwner(k))
@@ -278,19 +301,19 @@ function MODULE:InitClient()
 	end)
 	
 	self:AddHook(Vermilion.Event.CLIENT_GOT_RANK_OVERVIEWS, function()
-		local rank_overview_list = Vermilion.Menu.Pages["rank_editor"].Panel.RankList
+		local rank_overview_list = Vermilion.Menu.Pages["rank_editor"].RankList
 		if(IsValid(rank_overview_list)) then
 			Vermilion:PopulateRankTable(rank_overview_list, true, true)
 		end
 		rank_overview_list:OnRowSelected()
-		local permission_editor_list = Vermilion.Menu.Pages["permission_editor"].Panel.RankList
+		local permission_editor_list = Vermilion.Menu.Pages["permission_editor"].RankList
 		if(IsValid(permission_editor_list)) then
 			Vermilion:PopulateRankTable(permission_editor_list)
 		end
 	end)
 	
 	self:AddHook("PlayerInitialSpawn", function(name, steamid, rank, entindex)
-		local player_list = Vermilion.Menu.Pages["rank_assignment"].Panel.PlayerList
+		local player_list = Vermilion.Menu.Pages["rank_assignment"].PlayerList
 		if(IsValid(player_list)) then
 			player_list:AddLine(name, rank).EntityID = entindex
 		end
@@ -308,7 +331,7 @@ function MODULE:InitClient()
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_ranks")
 			end,
-			Builder = function(panel)
+			Builder = function(panel, paneldata)
 				local rankList = nil
 				local addRank = nil
 				local delRank = nil
@@ -342,7 +365,7 @@ function MODULE:InitClient()
 				addRank:SetPos(panel:GetWide() - 285, 30)
 				addRank:SetSize(panel:GetWide() - addRank:GetX() - 5, 30)
 				addRank:SetParent(panel)
-				panel.addRank = addRank
+				paneldata.addRank = addRank
 				
 				local addImg = vgui.Create("DImage")
 				addImg:SetImage("icon16/add.png")
@@ -375,7 +398,7 @@ function MODULE:InitClient()
 				delRank:SetSize(panel:GetWide() - delRank:GetX() - 5, 30)
 				delRank:SetParent(panel)
 				delRank:SetDisabled(true)
-				panel.delRank = delRank
+				paneldata.delRank = delRank
 				
 				local remImg = vgui.Create("DImage")
 				remImg:SetImage("icon16/delete.png")
@@ -412,7 +435,7 @@ function MODULE:InitClient()
 				renameRank:SetSize(panel:GetWide() - renameRank:GetX() - 5, 30)
 				renameRank:SetParent(panel)
 				renameRank:SetDisabled(true)
-				panel.renameRank = renameRank
+				paneldata.renameRank = renameRank
 				
 				local renImg = vgui.Create("DImage")
 				renImg:SetImage("icon16/textfield_rename.png")
@@ -439,7 +462,7 @@ function MODULE:InitClient()
 				moveUp:SetSize(panel:GetWide() - moveUp:GetX() - 5, 30)
 				moveUp:SetParent(panel)
 				moveUp:SetDisabled(true)
-				panel.moveUp = moveUp
+				paneldata.moveUp = moveUp
 				
 				local upImg = vgui.Create("DImage")
 				upImg:SetImage("icon16/arrow_up.png")
@@ -466,7 +489,7 @@ function MODULE:InitClient()
 				moveDown:SetSize(panel:GetWide() - moveDown:GetX() - 5, 30)
 				moveDown:SetParent(panel)
 				moveDown:SetDisabled(true)
-				panel.moveDown = moveDown
+				paneldata.moveDown = moveDown
 				
 				local downImg = vgui.Create("DImage")
 				downImg:SetImage("icon16/arrow_down.png")
@@ -492,7 +515,7 @@ function MODULE:InitClient()
 				setDefault:SetSize(panel:GetWide() - setDefault:GetX() - 5, 30)
 				setDefault:SetParent(panel)
 				setDefault:SetDisabled(true)
-				panel.setDefault = setDefault
+				paneldata.setDefault = setDefault
 				
 				local defImg = vgui.Create("DImage")
 				defImg:SetImage("icon16/accept.png")
@@ -543,7 +566,7 @@ function MODULE:InitClient()
 				setColour:SetSize(panel:GetWide() - setColour:GetX() - 5, 30)
 				setColour:SetParent(panel)
 				setColour:SetDisabled(true)
-				panel.setColour = setColour
+				paneldata.setColour = setColour
 				
 				local colourImg = vgui.Create("DImage")
 				colourImg:SetImage("icon16/color_wheel.png")
@@ -597,7 +620,7 @@ function MODULE:InitClient()
 				setIcon:SetSize(panel:GetWide() - setIcon:GetX() - 5, 30)
 				setIcon:SetParent(panel)
 				setIcon:SetDisabled(true)
-				panel.setIcon = setIcon
+				paneldata.setIcon = setIcon
 				
 				local icnImg = vgui.Create("DImage")
 				icnImg:SetImage("icon16/picture.png")
@@ -640,7 +663,7 @@ function MODULE:InitClient()
 				setParent:SetSize(panel:GetWide() - setParent:GetX() - 5, 30)
 				setParent:SetParent(panel)
 				setParent:SetDisabled(true)
-				panel.setParent = setParent
+				paneldata.setParent = setParent
 				
 				local parentImg = vgui.Create("DImage")
 				parentImg:SetImage("icon16/group.png")
@@ -649,11 +672,20 @@ function MODULE:InitClient()
 				parentImg:SetPos(10, (setParent:GetTall() - 16) / 2)
 				
 				
-				rankList = VToolkit:CreateList({ "Name", "Parent", "Immunity", "Default" }, false, false)
+				rankList = VToolkit:CreateList({
+					cols = {
+						"Name",
+						"Parent",
+						"Immunity",
+						"Default"
+					},
+					multiselect = false,
+					sortable = false
+				})
 				rankList:SetPos(10, 30)
 				rankList:SetSize(400, panel:GetTall() - 40)
 				rankList:SetParent(panel)
-				panel.RankList = rankList
+				paneldata.RankList = rankList
 				
 				rankList.Columns[3]:SetFixedWidth(59)
 				rankList.Columns[4]:SetFixedWidth(52)
@@ -674,16 +706,16 @@ function MODULE:InitClient()
 				end
 				
 			end,
-			Updater = function(panel)
-				Vermilion:PopulateRankTable(panel.RankList, true, true)
-				panel.delRank:SetDisabled(true)
-				panel.renameRank:SetDisabled(true)
-				panel.moveUp:SetDisabled(true)
-				panel.moveDown:SetDisabled(true)
-				panel.setDefault:SetDisabled(true)
-				panel.setColour:SetDisabled(true)
-				panel.setIcon:SetDisabled(true)
-				panel.setParent:SetDisabled(true)
+			Updater = function(panel, paneldata)
+				Vermilion:PopulateRankTable(paneldata.RankList, true, true)
+				paneldata.delRank:SetDisabled(true)
+				paneldata.renameRank:SetDisabled(true)
+				paneldata.moveUp:SetDisabled(true)
+				paneldata.moveDown:SetDisabled(true)
+				paneldata.setDefault:SetDisabled(true)
+				paneldata.setColour:SetDisabled(true)
+				paneldata.setIcon:SetDisabled(true)
+				paneldata.setParent:SetDisabled(true)
 			end
 		})
 	
@@ -696,9 +728,7 @@ function MODULE:InitClient()
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_ranks")
 			end,
-			Builder = function(panel)
-				
-				MODULE.PermissionEditorPanel = panel
+			Builder = function(panel, paneldata)
 				
 				local allPermissions = nil
 				local rankPermissions = nil
@@ -729,7 +759,7 @@ function MODULE:InitClient()
 				givePermission:SetSize(150, 20)
 				givePermission:SetParent(panel)
 				givePermission:SetEnabled(false)
-				panel.GivePermission = givePermission
+				paneldata.GivePermission = givePermission
 				
 				takePermission = VToolkit:CreateButton("Revoke Permission", function()
 					for i,k in pairs(rankPermissions:GetSelected()) do
@@ -744,15 +774,21 @@ function MODULE:InitClient()
 				takePermission:SetSize(150, 20)
 				takePermission:SetParent(panel)
 				takePermission:SetEnabled(false)
-				panel.TakePermission = takePermission
+				paneldata.TakePermission = takePermission
 				
 				
 				
-				rankList = VToolkit:CreateList({ "Name" }, false, false)
+				rankList = VToolkit:CreateList({
+					cols = {
+						"Name"
+					},
+					multiselect = false,
+					sortable = false
+				})
 				rankList:SetPos(10, 30)
 				rankList:SetSize(200, panel:GetTall() - 40)
 				rankList:SetParent(panel)
-				panel.RankList = rankList
+				paneldata.RankList = rankList
 				
 				local rankHeader = VToolkit:CreateHeaderLabel(rankList, "Ranks")
 				rankHeader:SetParent(panel)
@@ -766,11 +802,16 @@ function MODULE:InitClient()
 				end
 				
 				
-				rankPermissions = VToolkit:CreateList({ "Name", "Module" })
+				rankPermissions = VToolkit:CreateList({
+					cols = {
+						"Name",
+						"Module"
+					}
+				})
 				rankPermissions:SetPos(220, 30)
 				rankPermissions:SetSize(290, panel:GetTall() - 40)
 				rankPermissions:SetParent(panel)
-				panel.RankPermissions = rankPermissions
+				paneldata.RankPermissions = rankPermissions
 				
 				local rankPermissionsHeader = VToolkit:CreateHeaderLabel(rankPermissions, "Rank Permissions")
 				rankPermissionsHeader:SetParent(panel)
@@ -784,11 +825,16 @@ function MODULE:InitClient()
 				
 				
 				
-				allPermissions = VToolkit:CreateList({"Name", "Module"})
+				allPermissions = VToolkit:CreateList({
+					cols = {
+						"Name",
+						"Module"
+					}
+				})
 				allPermissions:SetPos(panel:GetWide() - 300, 30)
 				allPermissions:SetSize(290, panel:GetTall() - 40)
 				allPermissions:SetParent(panel)
-				panel.AllPermissions = allPermissions
+				paneldata.AllPermissions = allPermissions
 				
 				local allPermissionsHeader = VToolkit:CreateHeaderLabel(allPermissions, "All Permissions")
 				allPermissionsHeader:SetParent(panel)
@@ -800,18 +846,18 @@ function MODULE:InitClient()
 				VToolkit:CreateSearchBox(allPermissions)
 				
 			end,
-			Updater = function(panel)
-				Vermilion:PopulateRankTable(panel.RankList)
-				panel.AllPermissions:Clear()
+			Updater = function(panel, paneldata)
+				Vermilion:PopulateRankTable(paneldata.RankList)
+				paneldata.AllPermissions:Clear()
 				for i,k in pairs(Vermilion.Data.Permissions) do
-					panel.AllPermissions:AddLine(k.Permission, Vermilion:GetModule(k.Owner).Name)
+					paneldata.AllPermissions:AddLine(k.Permission, Vermilion:GetModule(k.Owner).Name)
 				end
 			end,
-			Destroyer = function(panel)
-				panel.GivePermission:SetEnabled(false)
-				panel.TakePermission:SetEnabled(false)
-				panel.RankPermissions:Clear()
-				panel.RankList:Clear()
+			Destroyer = function(panel, paneldata)
+				paneldata.GivePermission:SetEnabled(false)
+				paneldata.TakePermission:SetEnabled(false)
+				paneldata.RankPermissions:Clear()
+				paneldata.RankList:Clear()
 			end
 		})
 	
@@ -824,14 +870,21 @@ function MODULE:InitClient()
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_ranks")
 			end,
-			Builder = function(panel)
+			Builder = function(panel, paneldata)
 				local assignRank = nil
 				local rankList = nil
-				local playerList = VToolkit:CreateList({ "Name", "Rank" }, false, false)
+				local playerList = VToolkit:CreateList({
+					cols = {
+						"Name",
+						"Rank"
+					},
+					multiselect = false,
+					sortable = false
+				})
 				playerList:SetPos(10, 30)
 				playerList:SetSize(200, panel:GetTall() - 40)
 				playerList:SetParent(panel)
-				panel.PlayerList = playerList
+				paneldata.PlayerList = playerList
 				
 				local playerHeader = VToolkit:CreateHeaderLabel(playerList, "Active Players")
 				playerHeader:SetParent(panel)
@@ -843,11 +896,18 @@ function MODULE:InitClient()
 				VToolkit:CreateSearchBox(playerList)
 				
 				
-				rankList = VToolkit:CreateList({ "Name" }, false, false)
+				rankList = VToolkit:CreateList({
+					cols = {
+						"Name"
+					},
+					multiselect = false,
+					sortable = false,
+					centre = true
+				})
 				rankList:SetPos(220, 30)
 				rankList:SetSize(200, panel:GetTall() - 40)
 				rankList:SetParent(panel)
-				panel.RankList = rankList
+				paneldata.RankList = rankList
 				
 				local rankHeader = VToolkit:CreateHeaderLabel(rankList, "Ranks")
 				rankHeader:SetParent(panel)
@@ -878,14 +938,14 @@ function MODULE:InitClient()
 				assignRank:SetParent(panel)
 				assignRank:SetDisabled(true)
 				
-				panel.PlayerList = playerList
+				paneldata.PlayerList = playerList
 				
 			end,
-			Updater = function(panel)
-				Vermilion:PopulateRankTable(panel.RankList, false, true)
-				panel.PlayerList:Clear()
+			Updater = function(panel, paneldata)
+				Vermilion:PopulateRankTable(paneldata.RankList, false, true)
+				paneldata.PlayerList:Clear()
 				for i,k in pairs(VToolkit.GetValidPlayers()) do
-					panel.PlayerList:AddLine(k:GetName(), k:GetNWString("Vermilion_Rank", "player")).EntityID = k:EntIndex()
+					paneldata.PlayerList:AddLine(k:GetName(), k:GetNWString("Vermilion_Rank", "player")).EntityID = k:EntIndex()
 				end
 			end
 		})
@@ -899,7 +959,7 @@ function MODULE:InitClient()
 			Conditional = function(vplayer)
 				return Vermilion:HasPermission("manage_ranks")
 			end,
-			Builder = function(panel)
+			Builder = function(panel, paneldata)
 				local label = VToolkit:CreateLabel(Vermilion:TranslateStr("under_construction"))
 				label:SetFont("DermaLarge")
 				label:SizeToContents()

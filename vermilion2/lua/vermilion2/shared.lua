@@ -159,13 +159,46 @@ local vHookCall = function(evtName, gmTable, ...)
 end
 
 hook.Call = vHookCall
+
+-- hax to allow other addons with chat commands to run properly.
+
+local oHookA = hook.Add
+local vHookAdd = function(evt, name, func)
+	if(evt == "PlayerSay") then
+		oHookA("VPlayerSay", name, func)
+	else
+		oHookA(evt, name, func)
+	end
+end
+hook.Add = vHookAdd
+
+local oHookR = hook.Remove
+local vHookRemove = function(evt, name)
+	if(evt == "PlayerSay") then
+		oHookR("VPlayerSay", name)
+	else
+		oHookR(evt, name)
+	end
+end
+hook.Remove = vHookRemove
+
+
+if(hook.GetTable()["PlayerSay"] != nil) then
+	hook.GetTable()["VPlayerSay"] = hook.GetTable()["PlayerSay"]
+	hook.GetTable()["PlayerSay"] = nil
+end
+
 timer.Create("Vermilion_OverrideHookCall", 1, 0, function()
 	if(hook.Call != vHookCall) then
 		hook.Call = vHookCall
 	end
+	if(hook.Add != vHookAdd) then
+		hook.Call = vHookAdd
+	end
+	if(hook.Remove != vHookRemove) then
+		hook.Remove = vHookRemove
+	end
 end)
-
-
 
 
 
@@ -180,13 +213,15 @@ if(SERVER) then
 	
 	Vermilion:AddHook("PlayerInitialSpawn", "SendVermilionActivate", true, function(ply)
 		net.Start("Vermilion_ClientStart")
+		net.WriteTable(Vermilion:GetData("addon_load_states", {}, true))
 		net.Send(ply)
 	end)
 else
 	net.Receive("Vermilion_ClientStart", function()
 		if(Vermilion.AlreadyStarted) then return end
 		Vermilion.AlreadyStarted = true
-		timer.Simple(1, function() Vermilion:LoadModules() end)
+		local tab = net.ReadTable()
+		timer.Simple(1, function() Vermilion:LoadModules(tab) end)
 	end)
 end
 
@@ -198,7 +233,10 @@ end
 	//		Module Loading		\\
 ]]--
 
-function Vermilion:LoadModules()
+function Vermilion:LoadModules(cl_loaddata)
+	if(CLIENT) then
+		Vermilion.ModuleLoadData = cl_loaddata
+	end
 	self.Log("Loading modules...")
 	local files,dirs = file.Find("vermilion2/modules/*", "LUA")
 	for index,dir in pairs(dirs) do
@@ -214,6 +252,16 @@ function Vermilion:LoadModules()
 		end
 	end
 	for index,mod in pairs(self.Modules) do
+		if(SERVER) then
+			if(Vermilion:GetData("addon_load_states", {}, true)[mod.ID] == false) then
+				continue
+			end
+		end
+		if(CLIENT) then
+			if(cl_loaddata[mod.ID] == false) then
+				continue
+			end
+		end
 		mod:InitShared()
 		if(SERVER) then
 			mod:InitServer()
@@ -221,7 +269,6 @@ function Vermilion:LoadModules()
 		else
 			mod:InitClient()
 		end
-		
 	end
 	hook.Run(Vermilion.Event.MOD_LOADED)
 	hook.Run(Vermilion.Event.MOD_POST)
@@ -379,10 +426,29 @@ function Vermilion:RegisterModule(mod)
 end
 
 function Vermilion:GetModule(name)
+	if(SERVER and Vermilion:GetData("addon_load_states", {}, true)[name] == false) then return end
+	if(CLIENT and Vermilion.ModuleLoadData[name] == false) then return end
 	return self.Modules[name]
 end
 
 if(SERVER) then
+	util.AddNetworkString("VModuleDataEnableChange")
+	util.AddNetworkString("VModuleDataUpdate")
+	
+	net.Receive("VModuleDataUpdate", function(len, vplayer)
+		local mod = net.ReadString()
+		net.Start("VModuleDataUpdate")
+		net.WriteBoolean(Vermilion:GetData("addon_load_states", {}, true)[mod] != false)
+		net.Send(vplayer)
+	end)
+	
+	net.Receive("VModuleDataEnableChange", function(len, vplayer)
+		if(Vermilion:HasPermission(vplayer, "*")) then
+			local mod = net.ReadString()
+			Vermilion:GetData("addon_load_states", {}, true)[mod] = net.ReadBoolean()
+		end
+	end)
+
 	util.AddNetworkString("VPlayerInitialSpawn")
 	
 	Vermilion:AddHook("PlayerInitialSpawn", "VClientNotify", true, function(vplayer)

@@ -94,7 +94,7 @@ end
 
 
 
-function Vermilion:HandleChat(vplayer, text, targetLogger, isConsole)
+function Vermilion:HandleChat(vplayer, text, targetLogger, isConsole, oargs)
 	targetLogger = targetLogger or vplayer
 	local logFunc = nil
 	if(isfunction(targetLogger)) then
@@ -180,11 +180,18 @@ function Vermilion:HandleChat(vplayer, text, targetLogger, isConsole)
 			end
 			return ""
 		else
+			local result = hook.Run("VPlayerSay", oargs[1], oargs[2], oargs[3])
+			if(result == "") then
+				return result
+			end
 			logFunc("No such command!", NOTIFY_ERROR)
+			return ""
 		end
+	else
+		return hook.Run("VPlayerSay", oargs[1], oargs[2], oargs[3])
 	end
 end
 
 Vermilion:AddHook("PlayerSay", "Say1", false, function(vplayer, text, teamChat)
-	return Vermilion:HandleChat(vplayer, text, vplayer, false)
+	return Vermilion:HandleChat(vplayer, text, vplayer, false, {vplayer, text, teamChat})
 end)
